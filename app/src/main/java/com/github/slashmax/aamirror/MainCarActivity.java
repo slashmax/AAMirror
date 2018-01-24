@@ -55,6 +55,7 @@ public class MainCarActivity extends CarActivity
 
     private Surface                 m_Surface;
     private SurfaceView             m_SurfaceView;
+    private boolean                 m_AppsDrawerOpen;
 
     private VirtualDisplay          m_VirtualDisplay;
     private MediaProjection         m_MediaProjection;
@@ -62,6 +63,7 @@ public class MainCarActivity extends CarActivity
     private MinitouchDaemon         m_MinitouchDaemon;
     private MinitouchSocket         m_MinitouchSocket;
     private MinitouchTask           m_MinitouchTask;
+    private InputKeyEvent           m_InputKeyEvent;
 
     private int                     m_ScreenRotation;
     private double                  m_ProjectionOffsetX;
@@ -90,6 +92,8 @@ public class MainCarActivity extends CarActivity
         m_SurfaceView.getHolder().setFormat(PixelFormat.RGBA_8888);
         m_Surface = m_SurfaceView.getHolder().getSurface();
         m_SurfaceView.setOnTouchListener(this);
+
+        m_AppsDrawerOpen = false;
 
         AppsGridFragment gridFragment = (AppsGridFragment)getSupportFragmentManager().findFragmentById(R.id.m_AppsGridFragment);
         if (gridFragment != null)
@@ -196,6 +200,12 @@ public class MainCarActivity extends CarActivity
         if (CarApplication.OrientationListener != null)
             CarApplication.OrientationListener.enable();
         m_SurfaceView.setKeepScreenOn(true);
+
+        PowerManager pm = (PowerManager)getSystemService(Context.POWER_SERVICE);
+        if (pm != null)
+        {
+            pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP, "ScreenOnWakeLock").acquire(1);
+        }
     }
 
     @Override
@@ -222,9 +232,6 @@ public class MainCarActivity extends CarActivity
     {
         Log.d(TAG, "onResume");
         super.onResume();
-
-        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        if (pm != null) pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP, TAG).acquire(1);
     }
 
     @Override
@@ -389,62 +396,129 @@ public class MainCarActivity extends CarActivity
     {
         Log.d(TAG, "InitButtonsActions");
 
-        ImageButton back = (ImageButton)findViewById(R.id.m_Back);
-        if (back != null)
-            back.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Log.d(TAG, "m_Back.onClick");
-                }
-            });
-
         ImageButton m_Fav1 = (ImageButton)findViewById(R.id.m_Fav1);
         if (m_Fav1 != null)
-            m_Fav1.setOnClickListener(new View.OnClickListener() {
+            m_Fav1.setOnClickListener(new View.OnClickListener()
+            {
                 @Override
-                public void onClick(View v) {
+                public void onClick(View v)
+                {
                     Log.d(TAG, "m_Fav1.onClick");
+                    SwitchToMirrorSurface();
                 }
             });
 
         ImageButton m_Fav2 = (ImageButton)findViewById(R.id.m_Fav2);
         if (m_Fav2 != null)
-            m_Fav2.setOnClickListener(new View.OnClickListener() {
+            m_Fav2.setOnClickListener(new View.OnClickListener()
+            {
                 @Override
-                public void onClick(View v) {
+                public void onClick(View v)
+                {
                     Log.d(TAG, "m_Fav2.onClick");
+                    SwitchToMirrorSurface();
                 }
             });
 
 
         ImageButton m_Fav3 = (ImageButton)findViewById(R.id.m_Fav3);
         if (m_Fav3 != null)
-            m_Fav3.setOnClickListener(new View.OnClickListener() {
+            m_Fav3.setOnClickListener(new View.OnClickListener()
+            {
                 @Override
-                public void onClick(View v) {
+                public void onClick(View v)
+                {
                     Log.d(TAG, "m_Fav3.onClick");
+                    SwitchToMirrorSurface();
                 }
             });
 
         ImageButton m_Back =(ImageButton)findViewById(R.id.m_Back);
         if (m_Back != null)
-            m_Back.setOnClickListener(new View.OnClickListener() {
+            m_Back.setOnClickListener(new View.OnClickListener()
+            {
                 @Override
-                public void onClick(View v) {
+                public void onClick(View v)
+                {
                     Log.d(TAG, "m_Back.onClick");
+                    SwitchToMirrorSurface();
+                    GenerateKeyEvent(KeyEvent.KEYCODE_BACK, false);
                 }
             });
 
-        ImageButton m_Apps = (ImageButton)findViewById(R.id.m_Apps);
-        if (m_Apps != null)
-            m_Apps.setOnClickListener(new View.OnClickListener() {
+        ImageButton m_Menu = (ImageButton)findViewById(R.id.m_Menu);
+        if (m_Menu != null)
+        {
+            m_Menu.setOnClickListener(new View.OnClickListener()
+            {
                 @Override
-                public void onClick(View v) {
-                    Log.d(TAG, "m_Apps.onClick");
-                    FrameLayout m_AppsGridLayout = (FrameLayout)findViewById(R.id.m_AppsGridLayout);
-                    if (m_AppsGridLayout != null) m_AppsGridLayout.bringToFront();
+                public void onClick(View v)
+                {
+                    Log.d(TAG, "m_Menu.onClick");
+                    SwitchToMirrorSurface();
+                    GenerateKeyEvent(KeyEvent.KEYCODE_MENU, false);
                 }
             });
+            m_Menu.setOnLongClickListener(new View.OnLongClickListener()
+            {
+                @Override
+                public boolean onLongClick(View v)
+                {
+                    Log.d(TAG, "m_Menu.onLongClick");
+                    SwitchToMirrorSurface();
+                    return GenerateKeyEvent(KeyEvent.KEYCODE_MENU, true);
+                }
+            });
+        }
+
+        ImageButton m_Apps = (ImageButton)findViewById(R.id.m_Apps);
+        if (m_Apps != null)
+            m_Apps.setOnClickListener(new View.OnClickListener()
+            {
+                @Override
+                public void onClick(View v)
+                {
+                    Log.d(TAG, "m_Apps.onClick");
+                    if (m_AppsDrawerOpen)
+                        SwitchToMirrorSurface();
+                    else
+                        SwitchToAppsGrid();
+                }
+            });
+    }
+
+    @Override
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id)
+    {
+        Log.d(TAG, "onItemClick");
+        SwitchToMirrorSurface();
+    }
+
+    private void SwitchToAppsGrid()
+    {
+        Log.d(TAG, "SwitchToAppsGrid");
+        FrameLayout m_AppsGridLayout = (FrameLayout)findViewById(R.id.m_AppsGridLayout);
+        if (m_AppsGridLayout != null) m_AppsGridLayout.bringToFront();
+        m_AppsDrawerOpen = true;
+    }
+    private void SwitchToMirrorSurface()
+    {
+        Log.d(TAG, "SwitchToMirrorSurface");
+        if (m_SurfaceView != null) m_SurfaceView.bringToFront();
+        m_AppsDrawerOpen = false;
+    }
+
+    private boolean GenerateKeyEvent(int keyCode, boolean longPress)
+    {
+        Log.d(TAG, "GenerateKeyEvent");
+        if (m_MinitouchDaemon == null || !m_MinitouchDaemon.HasRoot())
+            return false;
+
+        if (m_InputKeyEvent == null)
+            m_InputKeyEvent = new InputKeyEvent();
+
+        m_InputKeyEvent.generate(keyCode, longPress);
+        return true;
     }
 
     private void startScreenCapture()
@@ -498,13 +572,6 @@ public class MainCarActivity extends CarActivity
         }
     }
 
-    @Override
-    public void onItemClick(AdapterView<?> parent, View view, int position, long id)
-    {
-        Log.d(TAG, "onItemClick");
-        if (m_SurfaceView != null) m_SurfaceView.bringToFront();
-    }
-
     private class MinitouchTask extends AsyncTask<Context, Void, Void>
     {
         @Override
@@ -524,6 +591,7 @@ public class MainCarActivity extends CarActivity
         m_MinitouchTask = new MinitouchTask();
 
         m_MinitouchTask.execute(this);
+
         return true;
     }
 

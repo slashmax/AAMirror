@@ -13,18 +13,22 @@ public class MinitouchDaemon
 {
     private static final String TAG = "MinitouchDaemon";
 
-    public boolean hasRoot()
+    private boolean m_HasRoot;
+
+    MinitouchDaemon()
     {
-        Log.d(TAG, "hasRoot");
-        return Shell.SU.available();
+        Log.d(TAG, "MinitouchDaemon");
+        m_HasRoot = false;
     }
 
     public void run(Context context)
     {
         Log.d(TAG, "run");
 
-        if (!hasRoot())
+        if (!Shell.SU.available())
             return;
+
+        m_HasRoot = true;
 
         String mt = install(context);
         if (mt == null || mt.isEmpty())
@@ -39,6 +43,11 @@ public class MinitouchDaemon
         Log.d(TAG, "kill: " + pid);
         if (pid != 0)
             LogShell(Shell.SU.run("kill " + pid));
+    }
+
+    public boolean HasRoot()
+    {
+        return m_HasRoot;
     }
 
     private String install(Context context)
