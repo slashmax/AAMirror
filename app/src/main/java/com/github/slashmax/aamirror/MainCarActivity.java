@@ -3,14 +3,15 @@ package com.github.slashmax.aamirror;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
-import android.hardware.input.InputManager;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -21,40 +22,55 @@ import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.InputEvent;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 
 import com.google.android.apps.auto.sdk.CarActivity;
 import com.google.android.apps.auto.sdk.CarUiController;
 import com.google.android.apps.auto.sdk.DayNightStyle;
 
-import java.lang.reflect.Method;
+import static android.view.MotionEvent.ACTION_DOWN;
+import static android.view.MotionEvent.ACTION_MOVE;
+import static android.view.MotionEvent.ACTION_POINTER_DOWN;
+import static android.view.MotionEvent.ACTION_POINTER_UP;
+import static android.view.MotionEvent.ACTION_UP;
+import static android.view.Surface.ROTATION_0;
+import static android.view.Surface.ROTATION_180;
+import static android.view.Surface.ROTATION_270;
+import static android.view.Surface.ROTATION_90;
 
-public class MainCarActivity extends CarActivity implements View.OnTouchListener, Handler.Callback
+public class MainCarActivity extends CarActivity
+        implements View.OnTouchListener, Handler.Callback, AdapterView.OnItemClickListener
 {
     private static final String TAG = "MainCarActivity";
 
-    private static final int    REQUEST_MEDIA_PROJECTION = 1;
+    private static final int        REQUEST_MEDIA_PROJECTION = 1;
 
-    private static int          DEFAULT_WIDTH    = 2160;
-    private static int          DEFAULT_HEIGHT   = 1080;
+    private Surface                 m_Surface;
+    private SurfaceView             m_SurfaceView;
 
-    private Surface             m_Surface;
-    private SurfaceView         m_SurfaceView;
+    private VirtualDisplay          m_VirtualDisplay;
+    private MediaProjection         m_MediaProjection;
 
-    private VirtualDisplay      m_VirtualDisplay;
-    private MediaProjection     m_MediaProjection;
+    private MinitouchDaemon         m_MinitouchDaemon;
+    private MinitouchSocket         m_MinitouchSocket;
+    private MinitouchTask           m_MinitouchTask;
 
-    InputManager                m_InputManager;
-    Method                      m_injectInputEvent;
+    private int                     m_ScreenRotation;
+    private double                  m_ProjectionOffsetX;
+    private double                  m_ProjectionOffsetY;
+    private double                  m_ProjectionWidth;
+    private double                  m_ProjectionHeight;
 
-    Handler                     m_Handler;
-    int                         m_ProjectionCode;
-    Intent                      m_ProjectionIntent;
+    private int                     m_ProjectionCode;
+    private Intent                  m_ProjectionIntent;
 
     @Override
     public void onCreate(Bundle bundle)
@@ -65,23 +81,27 @@ public class MainCarActivity extends CarActivity implements View.OnTouchListener
         super.onCreate(bundle);
         setContentView(R.layout.activity_car_main);
 
-        setIgnoreConfigChanges(0xFFFF);//0x200
+        setIgnoreConfigChanges(0x200);
         InitCarUiController(getCarUiController());
-        UpdateConfiguration(getResources().getConfiguration());
 
-        InitInputInject();
+        InitMinitouch();
 
         m_SurfaceView = (SurfaceView)findViewById(R.id.m_SurfaceView);
-        m_SurfaceView.getHolder().setFixedSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
         m_SurfaceView.getHolder().setFormat(PixelFormat.RGBA_8888);
         m_Surface = m_SurfaceView.getHolder().getSurface();
         m_SurfaceView.setOnTouchListener(this);
 
-        m_Handler = new Handler(this);
+        AppsGridFragment gridFragment = (AppsGridFragment)getSupportFragmentManager().findFragmentById(R.id.m_AppsGridFragment);
+        if (gridFragment != null)
+            gridFragment.setOnItemClickListener(this);
+
+        UpdateConfiguration(getResources().getConfiguration());
+        InitButtonsActions();
+        UpdateTouchTransformations(true);
 
         MediaProjectionManager mediaProjectionManager = (MediaProjectionManager)getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         if(mediaProjectionManager != null)
-            ResultRequestActivity.startActivityForResult(this, m_Handler, REQUEST_MEDIA_PROJECTION, mediaProjectionManager.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
+            ResultRequestActivity.startActivityForResult(this, new Handler(this), REQUEST_MEDIA_PROJECTION, mediaProjectionManager.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
     }
 
     @Override
@@ -90,6 +110,7 @@ public class MainCarActivity extends CarActivity implements View.OnTouchListener
         Log.d(TAG, "onDestroy");
         super.onDestroy();
         stopScreenCapture();
+        FreeMinitouch();
     }
 
 
@@ -172,6 +193,8 @@ public class MainCarActivity extends CarActivity implements View.OnTouchListener
         Log.d(TAG, "onStart");
         super.onStart();
 
+        if (CarApplication.OrientationListener != null)
+            CarApplication.OrientationListener.enable();
         m_SurfaceView.setKeepScreenOn(true);
     }
 
@@ -182,6 +205,8 @@ public class MainCarActivity extends CarActivity implements View.OnTouchListener
         super.onStop();
         stopScreenCapture();
 
+        if (CarApplication.OrientationListener != null)
+            CarApplication.OrientationListener.disable();
         m_SurfaceView.setKeepScreenOn(false);
     }
 
@@ -210,17 +235,69 @@ public class MainCarActivity extends CarActivity implements View.OnTouchListener
     }
 
     @Override
-    public void onWindowFocusChanged(boolean b, boolean b1)
+    public void onWindowFocusChanged(boolean focus, boolean b1)
     {
-        Log.d(TAG, "onWindowFocusChanged");
-        super.onWindowFocusChanged(b, b1);
+        Log.d(TAG, "onWindowFocusChanged: " + focus);
+        super.onWindowFocusChanged(focus, b1);
 
-        startScreenCapture();
+        if (focus)
+            startScreenCapture();
+    }
+
+    private void SetImageButtonColorState(int buttonId, ColorStateList foreTint, ColorStateList backTint)
+    {
+        Log.d(TAG, "SetImageButtonColorState");
+        ImageButton button = (ImageButton)findViewById(buttonId);
+        if (button != null)
+        {
+            button.setForegroundTintList(foreTint);
+            button.setBackgroundTintList(backTint);
+        }
     }
 
     private void UpdateConfiguration(Configuration configuration)
     {
+        if (configuration == null)
+            return;
+
         Log.d(TAG, "UpdateConfiguration: " + configuration.toString());
+
+        int backgroundColor;
+        if ((configuration.uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES)
+            backgroundColor = getColor(R.color.colorCarBackgroundNight);
+        else
+            backgroundColor = getColor(R.color.colorCarBackgroundDay);
+
+        int textColor = getColor(R.color.colorCarText);
+
+        int[][] states = new int[][] {
+                new int[] { android.R.attr.state_enabled}, // enabled
+                new int[] {-android.R.attr.state_enabled}, // disabled
+                new int[] {-android.R.attr.state_checked}, // unchecked
+                new int[] { android.R.attr.state_pressed}  // pressed
+        };
+
+        int[] foreColors = new int[] {textColor, textColor, textColor, textColor};
+
+        int[] backColors = new int[] {backgroundColor, backgroundColor, backgroundColor, backgroundColor};
+
+        ColorStateList foreTint = new ColorStateList(states, foreColors);
+        ColorStateList backTint = new ColorStateList(states, backColors);
+
+        LinearLayout buttonsLayout = (LinearLayout)findViewById(R.id.m_ButtonsLayout);
+        if (buttonsLayout != null)
+            buttonsLayout.setBackgroundColor(backgroundColor);
+
+        FrameLayout appsGridLayout = (FrameLayout)findViewById(R.id.m_AppsGridLayout);
+        if (appsGridLayout != null)
+            appsGridLayout.setBackgroundColor(backgroundColor);
+
+        SetImageButtonColorState(R.id.m_Fav1, foreTint, backTint);
+        SetImageButtonColorState(R.id.m_Fav2, foreTint, backTint);
+        SetImageButtonColorState(R.id.m_Fav3, foreTint, backTint);
+        SetImageButtonColorState(R.id.m_Back, foreTint, backTint);
+        SetImageButtonColorState(R.id.m_Menu, foreTint, backTint);
+        SetImageButtonColorState(R.id.m_Apps, foreTint, backTint);
     }
 
     @Override
@@ -308,11 +385,75 @@ public class MainCarActivity extends CarActivity implements View.OnTouchListener
         return super.getSystemServiceName(serviceClass);
     }
 
+    private void InitButtonsActions()
+    {
+        Log.d(TAG, "InitButtonsActions");
+
+        ImageButton back = (ImageButton)findViewById(R.id.m_Back);
+        if (back != null)
+            back.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Log.d(TAG, "m_Back.onClick");
+                }
+            });
+
+        ImageButton m_Fav1 = (ImageButton)findViewById(R.id.m_Fav1);
+        if (m_Fav1 != null)
+            m_Fav1.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Log.d(TAG, "m_Fav1.onClick");
+                }
+            });
+
+        ImageButton m_Fav2 = (ImageButton)findViewById(R.id.m_Fav2);
+        if (m_Fav2 != null)
+            m_Fav2.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Log.d(TAG, "m_Fav2.onClick");
+                }
+            });
+
+
+        ImageButton m_Fav3 = (ImageButton)findViewById(R.id.m_Fav3);
+        if (m_Fav3 != null)
+            m_Fav3.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Log.d(TAG, "m_Fav3.onClick");
+                }
+            });
+
+        ImageButton m_Back =(ImageButton)findViewById(R.id.m_Back);
+        if (m_Back != null)
+            m_Back.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Log.d(TAG, "m_Back.onClick");
+                }
+            });
+
+        ImageButton m_Apps = (ImageButton)findViewById(R.id.m_Apps);
+        if (m_Apps != null)
+            m_Apps.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Log.d(TAG, "m_Apps.onClick");
+                    FrameLayout m_AppsGridLayout = (FrameLayout)findViewById(R.id.m_AppsGridLayout);
+                    if (m_AppsGridLayout != null) m_AppsGridLayout.bringToFront();
+                }
+            });
+    }
+
     private void startScreenCapture()
     {
         Log.d(TAG, "startScreenCapture");
 
         stopScreenCapture();
+
+        UpdateTouchTransformations(true);
 
         DisplayMetrics metrics = new DisplayMetrics();
         c().getWindowManager().getDefaultDisplay().getMetrics(metrics);
@@ -324,16 +465,20 @@ public class MainCarActivity extends CarActivity implements View.OnTouchListener
 
         if (m_MediaProjection != null)
         {
-            int c_width = DEFAULT_WIDTH;
-            int c_height = DEFAULT_HEIGHT;
+            int c_width = m_SurfaceView.getWidth();
+            int c_height = m_SurfaceView.getHeight();
 
             Log.d(TAG, "c_width: " + c_width);
             Log.d(TAG, "c_height: " + c_height);
             Log.d(TAG, "ScreenDensity: " + ScreenDensity);
-            m_VirtualDisplay = m_MediaProjection.createVirtualDisplay("ScreenCapture",
-                    c_width, c_height, ScreenDensity,
-                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                    m_Surface, null, null);
+
+            if (c_width > 0 && c_height > 0)
+            {
+                m_VirtualDisplay = m_MediaProjection.createVirtualDisplay("ScreenCapture",
+                        c_width, c_height, ScreenDensity,
+                        DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                        m_Surface, null, null);
+            }
         }
     }
 
@@ -353,41 +498,142 @@ public class MainCarActivity extends CarActivity implements View.OnTouchListener
         }
     }
 
-    private void InitInputInject()
+    @Override
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id)
     {
-        Log.d(TAG, "InitInputInject");
+        Log.d(TAG, "onItemClick");
+        if (m_SurfaceView != null) m_SurfaceView.bringToFront();
+    }
 
-        try
+    private class MinitouchTask extends AsyncTask<Context, Void, Void>
+    {
+        @Override
+        protected Void doInBackground(Context... contexts)
         {
-            m_InputManager = (InputManager)InputManager.class.getDeclaredMethod("getInstance", new Class[0]).invoke(null, new Object[0]);
-            m_injectInputEvent = InputManager.class.getMethod("injectInputEvent", new Class[]{InputEvent.class, Integer.TYPE});
-        }
-        catch (Exception e)
-        {
-            Log.d(TAG, "InitInputInject exception : " + e.toString());
+            Log.d(TAG, "doInBackground");
+            m_MinitouchDaemon.run(contexts[0]);
+            return null;
         }
     }
 
-    private void InjectInput(MotionEvent event)
+    private boolean InitMinitouch()
     {
-        Log.d(TAG, "InjectInput: " + (event != null ? event.toString() : "null"));
-        try
-        {
-            if (m_injectInputEvent != null && m_InputManager != null)
-                m_injectInputEvent.invoke(m_InputManager, new Object[]{event, Integer.valueOf(0)});
-        }
-        catch (Exception e)
-        {
-            Log.d(TAG, "InjectInput exception : " + e.toString());
-        }
+        Log.d(TAG, "InitMinitouch");
+        m_MinitouchDaemon = new MinitouchDaemon();
+        m_MinitouchSocket = new MinitouchSocket();
+        m_MinitouchTask = new MinitouchTask();
+
+        m_MinitouchTask.execute(this);
+        return true;
+    }
+
+    private boolean FreeMinitouch()
+    {
+        Log.d(TAG, "FreeMinitouch");
+
+        m_MinitouchSocket.disconnect();
+        m_MinitouchDaemon.kill(m_MinitouchSocket.getPid());
+        m_MinitouchTask.cancel(true);
+
+        return true;
+    }
+
+    private void UpdateTouchTransformations(boolean force)
+    {
+        if (CarApplication.ScreenRotation == m_ScreenRotation && !force)
+            return;
+
+        m_ScreenRotation = CarApplication.ScreenRotation;
+        double ScreenWidth = CarApplication.ScreenSize.x;
+        double ScreenHeight = CarApplication.ScreenSize.y;
+
+        double SurfaceWidth = m_SurfaceView.getWidth();
+        double SurfaceHeight = m_SurfaceView.getHeight();
+
+        Log.d(TAG, "UpdateTouchTransformations Screen: " + ScreenWidth + " x " + ScreenHeight);
+        Log.d(TAG, "UpdateTouchTransformations Surface: " + SurfaceWidth + " x " + SurfaceHeight);
+
+        double factX = SurfaceWidth / ScreenWidth;
+        double factY = SurfaceHeight / ScreenHeight;
+
+        double fact = (factX < factY ? factX : factY);
+
+        m_ProjectionWidth = fact * ScreenWidth;
+        m_ProjectionHeight = fact * ScreenHeight;
+
+        m_ProjectionOffsetX = (SurfaceWidth - m_ProjectionWidth) / 2.0;
+        m_ProjectionOffsetY = (SurfaceHeight - m_ProjectionHeight) / 2.0;
     }
 
     @Override
     public boolean onTouch(View v, MotionEvent event)
     {
-        Log.d(TAG, "onTouch: " + (event != null ? event.toString() : "null"));
+        UpdateTouchTransformations(false);
 
-//        InjectInput(event);
+        if (m_MinitouchSocket != null && event != null)
+        {
+            if (!m_MinitouchSocket.isConnected())
+                m_MinitouchSocket.connect();
+
+            boolean ok = m_MinitouchSocket.isConnected();
+            int action = event.getActionMasked();
+            for (int i = 0; i < event.getPointerCount() && ok; i++)
+            {
+                int id = event.getPointerId(i);
+                double x = (event.getX(i) - m_ProjectionOffsetX) / m_ProjectionWidth;
+                double y = (event.getY(i) - m_ProjectionOffsetY) / m_ProjectionHeight;
+                double pressure = event.getPressure(i);
+
+                double rx = x;
+                double ry = y;
+                switch (m_ScreenRotation)
+                {
+                    case ROTATION_0:
+                    {
+                        rx = x;
+                        ry = y;
+                        break;
+                    }
+                    case ROTATION_90:
+                    {
+                        rx = 1.0 - y;
+                        ry = x;
+                        break;
+                    }
+                    case ROTATION_180:
+                    {
+                        rx = 1.0 - x;
+                        ry = 1.0 - y;
+                        break;
+                    }
+                    case ROTATION_270:
+                    {
+                        rx = y;
+                        ry = 1.0 - x;
+                        break;
+                    }
+                }
+                switch (action)
+                {
+                    case ACTION_DOWN:
+                    case ACTION_POINTER_DOWN:
+                        ok = ok && m_MinitouchSocket.TouchDown(id, rx, ry, pressure);
+                        break;
+                    case ACTION_MOVE:
+                        ok = ok && m_MinitouchSocket.TouchMove(id, rx, ry, pressure);
+                        break;
+                    case ACTION_UP:
+                        ok = ok && m_MinitouchSocket.TouchUpAll();
+                        break;
+                    case ACTION_POINTER_UP:
+                        ok = ok && m_MinitouchSocket.TouchUp(id);
+                        break;
+                }
+            }
+
+            if (ok) m_MinitouchSocket.TouchCommit();
+        }
+
         return true;
     }
 

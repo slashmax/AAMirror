@@ -4,9 +4,92 @@
     android:layout_height="match_parent"
     xmlns:android="http://schemas.android.com/apk/res/android" >
 
-    <SurfaceView
-        android:id="@+id/m_SurfaceView"
+    <LinearLayout
+        android:id="@+id/m_MainLayout"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/m_ButtonsLayout"
+            android:layout_width="80dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <ImageButton
+                android:id="@+id/m_Fav1"
+                android:layout_width="match_parent"
+                android:layout_height="66dp"
+                android:backgroundTint="@color/colorCarBackgroundDay"
+                android:src="@drawable/ic_star_black"
+                android:tint="@color/colorCarText" />
+
+            <ImageButton
+                android:id="@+id/m_Fav2"
+                android:layout_width="match_parent"
+                android:layout_height="66dp"
+                android:backgroundTint="@color/colorCarBackgroundDay"
+                android:src="@drawable/ic_star_black"
+                android:tint="@color/colorCarText" />
+
+            <ImageButton
+                android:id="@+id/m_Fav3"
+                android:layout_width="match_parent"
+                android:layout_height="66dp"
+                android:backgroundTint="@color/colorCarBackgroundDay"
+                android:src="@drawable/ic_star_black"
+                android:tint="@color/colorCarText" />
+
+            <ImageButton
+                android:id="@+id/m_Back"
+                android:layout_width="match_parent"
+                android:layout_height="66dp"
+                android:backgroundTint="@color/colorCarBackgroundDay"
+                android:src="@drawable/ic_arrow_back_black"
+                android:tint="@color/colorCarText" />
+
+            <ImageButton
+                android:id="@+id/m_Menu"
+                android:layout_width="match_parent"
+                android:layout_height="66dp"
+                android:backgroundTint="@color/colorCarBackgroundDay"
+                android:src="@drawable/ic_menu_black"
+                android:tint="@color/colorCarText" />
+
+            <ImageButton
+                android:id="@+id/m_Apps"
+                android:layout_width="match_parent"
+                android:layout_height="66dp"
+                android:backgroundTint="@color/colorCarBackgroundDay"
+                android:src="@drawable/ic_apps_black"
+                android:tint="@color/colorCarText" />
+
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <FrameLayout
+                android:id="@+id/m_AppsGridLayout"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <fragment
+                    android:id="@+id/m_AppsGridFragment"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:name="com.github.slashmax.aamirror.AppsGridFragment" />
+
+            </FrameLayout>
+
+            <SurfaceView
+                android:id="@+id/m_SurfaceView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+        </FrameLayout>
+
+    </LinearLayout>
 
 </FrameLayout>
