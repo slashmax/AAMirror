@@ -15,31 +15,41 @@ public class AppEntry
         mApkFile = new File(info.sourceDir);
     }
 
-    public ApplicationInfo getApplicationInfo() {
+    public ApplicationInfo getApplicationInfo()
+    {
         return mInfo;
     }
 
-    public String getLabel() {
+    public String getLabel()
+    {
         return mLabel;
     }
 
-    public Drawable getIcon() {
-        if (mIcon == null) {
-            if (mApkFile.exists()) {
+    public Drawable getIcon()
+    {
+        if (mIcon == null)
+        {
+            if (mApkFile.exists())
+            {
                 mIcon = mInfo.loadIcon(mLoader.mPm);
                 return mIcon;
-            } else {
+            }
+            else
+            {
                 mMounted = false;
             }
-        } else if (!mMounted) {
-            // If the app wasn't mounted but is now mounted, reload
-            // its icon.
-            if (mApkFile.exists()) {
+        }
+        else if (!mMounted)
+        {
+            if (mApkFile.exists())
+            {
                 mMounted = true;
                 mIcon = mInfo.loadIcon(mLoader.mPm);
                 return mIcon;
             }
-        } else {
+        }
+        else
+        {
             return mIcon;
         }
 
@@ -47,16 +57,22 @@ public class AppEntry
                 android.R.drawable.sym_def_app_icon);
     }
 
-    @Override public String toString() {
+    @Override public String toString()
+    {
         return mLabel;
     }
 
-    void loadLabel(Context context) {
-        if (mLabel == null || !mMounted) {
-            if (!mApkFile.exists()) {
+    void loadLabel(Context context)
+    {
+        if (mLabel == null || !mMounted)
+        {
+            if (!mApkFile.exists())
+            {
                 mMounted = false;
                 mLabel = mInfo.packageName;
-            } else {
+            }
+            else
+            {
                 mMounted = true;
                 CharSequence label = mInfo.loadLabel(context.getPackageManager());
                 mLabel = label != null ? label.toString() : mInfo.packageName;

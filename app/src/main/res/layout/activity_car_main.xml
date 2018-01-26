@@ -14,55 +14,44 @@
             android:id="@+id/m_ButtonsLayout"
             android:layout_width="80dp"
             android:layout_height="match_parent"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:background="@color/colorCarBackgroundDay">
 
-            <ImageButton
-                android:id="@+id/m_Fav1"
-                android:layout_width="match_parent"
-                android:layout_height="66dp"
-                android:backgroundTint="@color/colorCarBackgroundDay"
-                android:src="@drawable/ic_star_black"
-                android:tint="@color/colorCarText" />
-
-            <ImageButton
-                android:id="@+id/m_Fav2"
-                android:layout_width="match_parent"
-                android:layout_height="66dp"
-                android:backgroundTint="@color/colorCarBackgroundDay"
-                android:src="@drawable/ic_star_black"
-                android:tint="@color/colorCarText" />
-
-            <ImageButton
-                android:id="@+id/m_Fav3"
-                android:layout_width="match_parent"
-                android:layout_height="66dp"
-                android:backgroundTint="@color/colorCarBackgroundDay"
-                android:src="@drawable/ic_star_black"
-                android:tint="@color/colorCarText" />
-
-            <ImageButton
+            <ImageView
                 android:id="@+id/m_Back"
                 android:layout_width="match_parent"
                 android:layout_height="66dp"
-                android:backgroundTint="@color/colorCarBackgroundDay"
-                android:src="@drawable/ic_arrow_back_black"
-                android:tint="@color/colorCarText" />
+                android:src="@drawable/ic_arrow_back_black" />
 
-            <ImageButton
+            <ImageView
                 android:id="@+id/m_Menu"
                 android:layout_width="match_parent"
                 android:layout_height="66dp"
-                android:backgroundTint="@color/colorCarBackgroundDay"
-                android:src="@drawable/ic_menu_black"
-                android:tint="@color/colorCarText" />
+                android:src="@drawable/ic_menu_black" />
 
-            <ImageButton
+            <ImageView
                 android:id="@+id/m_Apps"
                 android:layout_width="match_parent"
                 android:layout_height="66dp"
-                android:backgroundTint="@color/colorCarBackgroundDay"
-                android:src="@drawable/ic_apps_black"
-                android:tint="@color/colorCarText" />
+                android:src="@drawable/ic_apps_black" />
+
+            <ImageView
+                android:id="@+id/m_Fav1"
+                android:layout_width="match_parent"
+                android:layout_height="66dp"
+                android:src="@drawable/ic_star_black" />
+
+            <ImageView
+                android:id="@+id/m_Fav2"
+                android:layout_width="match_parent"
+                android:layout_height="66dp"
+                android:src="@drawable/ic_star_black" />
+
+            <ImageView
+                android:id="@+id/m_Fav3"
+                android:layout_width="match_parent"
+                android:layout_height="66dp"
+                android:src="@drawable/ic_star_black" />
 
         </LinearLayout>
 
@@ -70,10 +59,20 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <FrameLayout
+            <LinearLayout
                 android:id="@+id/m_AppsGridLayout"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent">
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/m_AppsTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:textColor="@android:color/white"
+                    android:textSize="16sp"
+                    android:text="@string/launch_activity" />
 
                 <fragment
                     android:id="@+id/m_AppsGridFragment"
@@ -81,7 +80,7 @@
                     android:layout_height="match_parent"
                     android:name="com.github.slashmax.aamirror.AppsGridFragment" />
 
-            </FrameLayout>
+            </LinearLayout>
 
             <SurfaceView
                 android:id="@+id/m_SurfaceView"

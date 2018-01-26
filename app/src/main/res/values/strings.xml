@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">AA Mirror</string>
+    <string name="launch_activity">Launch app</string>
+    <string name="set_favourite_activity">Set as favourite app</string>
 </resources>

@@ -3,10 +3,11 @@ package com.github.slashmax.aamirror;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.ColorStateList;
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.graphics.drawable.Drawable;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
 import android.media.projection.MediaProjection;
@@ -27,15 +28,18 @@ import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.SurfaceView;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.FrameLayout;
-import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import com.google.android.apps.auto.sdk.CarActivity;
 import com.google.android.apps.auto.sdk.CarUiController;
 import com.google.android.apps.auto.sdk.DayNightStyle;
 
+import static android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP;
+import static android.os.PowerManager.ON_AFTER_RELEASE;
+import static android.os.PowerManager.PARTIAL_WAKE_LOCK;
+import static android.os.PowerManager.SCREEN_DIM_WAKE_LOCK;
 import static android.view.MotionEvent.ACTION_DOWN;
 import static android.view.MotionEvent.ACTION_MOVE;
 import static android.view.MotionEvent.ACTION_POINTER_DOWN;
@@ -47,15 +51,28 @@ import static android.view.Surface.ROTATION_270;
 import static android.view.Surface.ROTATION_90;
 
 public class MainCarActivity extends CarActivity
-        implements View.OnTouchListener, Handler.Callback, AdapterView.OnItemClickListener
+        implements View.OnTouchListener, Handler.Callback,
+        AppsGridFragment.OnAppClickListener, AppsGridFragment.OnAppLongClickListener
 {
     private static final String TAG = "MainCarActivity";
+    private static final String PREFERENCES = "com.github.slashmax.aamirror.preferences";
 
     private static final int        REQUEST_MEDIA_PROJECTION = 1;
 
+    private static final int        ACTION_APP_LAUNCH   = 0;
+    private static final int        ACTION_APP_FAV_1    = 1;
+    private static final int        ACTION_APP_FAV_2    = 2;
+    private static final int        ACTION_APP_FAV_3    = 3;
+
+    private String                  m_AppFav1;
+    private String                  m_AppFav2;
+    private String                  m_AppFav3;
+
+    private int                     m_AppsAction;
+    private boolean                 m_AppsDrawerOpen;
+
     private Surface                 m_Surface;
     private SurfaceView             m_SurfaceView;
-    private boolean                 m_AppsDrawerOpen;
 
     private VirtualDisplay          m_VirtualDisplay;
     private MediaProjection         m_MediaProjection;
@@ -65,6 +82,7 @@ public class MainCarActivity extends CarActivity
     private MinitouchTask           m_MinitouchTask;
     private InputKeyEvent           m_InputKeyEvent;
 
+    private DisplayRotation         m_DisplayRotation;
     private int                     m_ScreenRotation;
     private double                  m_ProjectionOffsetX;
     private double                  m_ProjectionOffsetY;
@@ -73,6 +91,8 @@ public class MainCarActivity extends CarActivity
 
     private int                     m_ProjectionCode;
     private Intent                  m_ProjectionIntent;
+
+    private PowerManager.WakeLock   m_WakeLock;
 
     @Override
     public void onCreate(Bundle bundle)
@@ -97,21 +117,31 @@ public class MainCarActivity extends CarActivity
 
         AppsGridFragment gridFragment = (AppsGridFragment)getSupportFragmentManager().findFragmentById(R.id.m_AppsGridFragment);
         if (gridFragment != null)
-            gridFragment.setOnItemClickListener(this);
+        {
+            gridFragment.setOnAppClickListener(this);
+            gridFragment.setOnAppLongClickListener(this);
+        }
 
         UpdateConfiguration(getResources().getConfiguration());
         InitButtonsActions();
         UpdateTouchTransformations(true);
 
+        LoadSharedPreferences();
+
         MediaProjectionManager mediaProjectionManager = (MediaProjectionManager)getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         if(mediaProjectionManager != null)
             ResultRequestActivity.startActivityForResult(this, new Handler(this), REQUEST_MEDIA_PROJECTION, mediaProjectionManager.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
+
+        m_DisplayRotation = new DisplayRotation(this);
+        m_DisplayRotation.onCreate();
     }
 
     @Override
     public void onDestroy()
     {
         Log.d(TAG, "onDestroy");
+
+        m_DisplayRotation.onDestroy();
         super.onDestroy();
         stopScreenCapture();
         FreeMinitouch();
@@ -189,6 +219,7 @@ public class MainCarActivity extends CarActivity
     {
         Log.d(TAG, "onSaveInstanceState: " + (bundle != null ? bundle.toString() : "null"));
         super.onSaveInstanceState(bundle);
+        SaveSharedPreferences();
     }
 
     @Override
@@ -196,28 +227,39 @@ public class MainCarActivity extends CarActivity
     {
         Log.d(TAG, "onStart");
         super.onStart();
-
         if (CarApplication.OrientationListener != null)
             CarApplication.OrientationListener.enable();
+
         m_SurfaceView.setKeepScreenOn(true);
 
         PowerManager pm = (PowerManager)getSystemService(Context.POWER_SERVICE);
         if (pm != null)
         {
-            pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP, "ScreenOnWakeLock").acquire(1);
+            m_WakeLock = pm.newWakeLock(SCREEN_DIM_WAKE_LOCK | ACQUIRE_CAUSES_WAKEUP, "AAMirrorWakeLock");
+            m_WakeLock.acquire();
         }
+
+        m_DisplayRotation.onStart();
     }
 
     @Override
     public void onStop()
     {
         Log.d(TAG, "onStop");
-        super.onStop();
         stopScreenCapture();
-
         if (CarApplication.OrientationListener != null)
             CarApplication.OrientationListener.disable();
+
         m_SurfaceView.setKeepScreenOn(false);
+
+        m_DisplayRotation.onStop();
+
+        if (m_WakeLock != null && m_WakeLock.isHeld())
+        {
+            m_WakeLock.release(ON_AFTER_RELEASE);
+            m_WakeLock = null;
+        }
+        super.onStop();
     }
 
     @Override
@@ -251,17 +293,6 @@ public class MainCarActivity extends CarActivity
             startScreenCapture();
     }
 
-    private void SetImageButtonColorState(int buttonId, ColorStateList foreTint, ColorStateList backTint)
-    {
-        Log.d(TAG, "SetImageButtonColorState");
-        ImageButton button = (ImageButton)findViewById(buttonId);
-        if (button != null)
-        {
-            button.setForegroundTintList(foreTint);
-            button.setBackgroundTintList(backTint);
-        }
-    }
-
     private void UpdateConfiguration(Configuration configuration)
     {
         if (configuration == null)
@@ -275,36 +306,13 @@ public class MainCarActivity extends CarActivity
         else
             backgroundColor = getColor(R.color.colorCarBackgroundDay);
 
-        int textColor = getColor(R.color.colorCarText);
-
-        int[][] states = new int[][] {
-                new int[] { android.R.attr.state_enabled}, // enabled
-                new int[] {-android.R.attr.state_enabled}, // disabled
-                new int[] {-android.R.attr.state_checked}, // unchecked
-                new int[] { android.R.attr.state_pressed}  // pressed
-        };
-
-        int[] foreColors = new int[] {textColor, textColor, textColor, textColor};
-
-        int[] backColors = new int[] {backgroundColor, backgroundColor, backgroundColor, backgroundColor};
-
-        ColorStateList foreTint = new ColorStateList(states, foreColors);
-        ColorStateList backTint = new ColorStateList(states, backColors);
-
         LinearLayout buttonsLayout = (LinearLayout)findViewById(R.id.m_ButtonsLayout);
         if (buttonsLayout != null)
             buttonsLayout.setBackgroundColor(backgroundColor);
 
-        FrameLayout appsGridLayout = (FrameLayout)findViewById(R.id.m_AppsGridLayout);
+        LinearLayout appsGridLayout = (LinearLayout)findViewById(R.id.m_AppsGridLayout);
         if (appsGridLayout != null)
             appsGridLayout.setBackgroundColor(backgroundColor);
-
-        SetImageButtonColorState(R.id.m_Fav1, foreTint, backTint);
-        SetImageButtonColorState(R.id.m_Fav2, foreTint, backTint);
-        SetImageButtonColorState(R.id.m_Fav3, foreTint, backTint);
-        SetImageButtonColorState(R.id.m_Back, foreTint, backTint);
-        SetImageButtonColorState(R.id.m_Menu, foreTint, backTint);
-        SetImageButtonColorState(R.id.m_Apps, foreTint, backTint);
     }
 
     @Override
@@ -396,57 +404,37 @@ public class MainCarActivity extends CarActivity
     {
         Log.d(TAG, "InitButtonsActions");
 
-        ImageButton m_Fav1 = (ImageButton)findViewById(R.id.m_Fav1);
-        if (m_Fav1 != null)
-            m_Fav1.setOnClickListener(new View.OnClickListener()
-            {
-                @Override
-                public void onClick(View v)
-                {
-                    Log.d(TAG, "m_Fav1.onClick");
-                    SwitchToMirrorSurface();
-                }
-            });
-
-        ImageButton m_Fav2 = (ImageButton)findViewById(R.id.m_Fav2);
-        if (m_Fav2 != null)
-            m_Fav2.setOnClickListener(new View.OnClickListener()
-            {
-                @Override
-                public void onClick(View v)
-                {
-                    Log.d(TAG, "m_Fav2.onClick");
-                    SwitchToMirrorSurface();
-                }
-            });
-
-
-        ImageButton m_Fav3 = (ImageButton)findViewById(R.id.m_Fav3);
-        if (m_Fav3 != null)
-            m_Fav3.setOnClickListener(new View.OnClickListener()
-            {
-                @Override
-                public void onClick(View v)
-                {
-                    Log.d(TAG, "m_Fav3.onClick");
-                    SwitchToMirrorSurface();
-                }
-            });
-
-        ImageButton m_Back =(ImageButton)findViewById(R.id.m_Back);
+        ImageView m_Back =(ImageView)findViewById(R.id.m_Back);
         if (m_Back != null)
+        {
             m_Back.setOnClickListener(new View.OnClickListener()
             {
                 @Override
                 public void onClick(View v)
                 {
                     Log.d(TAG, "m_Back.onClick");
-                    SwitchToMirrorSurface();
-                    GenerateKeyEvent(KeyEvent.KEYCODE_BACK, false);
+                    if (m_AppsDrawerOpen)
+                        SwitchToMirrorSurface();
+                    else
+                        GenerateKeyEvent(KeyEvent.KEYCODE_BACK, false);
                 }
             });
+            m_Back.setOnLongClickListener(new View.OnLongClickListener()
+            {
+                @Override
+                public boolean onLongClick(View v)
+                {
+                    Log.d(TAG, "m_Back.onLongClick");
+                    if (m_AppsDrawerOpen)
+                        SwitchToMirrorSurface();
+                    else
+                        GenerateKeyEvent(KeyEvent.KEYCODE_BACK, true);
+                    return true;
+                }
+            });
+        }
 
-        ImageButton m_Menu = (ImageButton)findViewById(R.id.m_Menu);
+        ImageView m_Menu = (ImageView)findViewById(R.id.m_Menu);
         if (m_Menu != null)
         {
             m_Menu.setOnClickListener(new View.OnClickListener()
@@ -455,8 +443,10 @@ public class MainCarActivity extends CarActivity
                 public void onClick(View v)
                 {
                     Log.d(TAG, "m_Menu.onClick");
-                    SwitchToMirrorSurface();
-                    GenerateKeyEvent(KeyEvent.KEYCODE_MENU, false);
+                    if (m_AppsDrawerOpen)
+                        SwitchToMirrorSurface();
+                    else
+                        GenerateKeyEvent(KeyEvent.KEYCODE_MENU, false);
                 }
             });
             m_Menu.setOnLongClickListener(new View.OnLongClickListener()
@@ -465,14 +455,18 @@ public class MainCarActivity extends CarActivity
                 public boolean onLongClick(View v)
                 {
                     Log.d(TAG, "m_Menu.onLongClick");
-                    SwitchToMirrorSurface();
-                    return GenerateKeyEvent(KeyEvent.KEYCODE_MENU, true);
+                    if (m_AppsDrawerOpen)
+                        SwitchToMirrorSurface();
+                    else
+                        GenerateKeyEvent(KeyEvent.KEYCODE_MENU, true);
+                    return true;
                 }
             });
         }
 
-        ImageButton m_Apps = (ImageButton)findViewById(R.id.m_Apps);
+        ImageView m_Apps = (ImageView)findViewById(R.id.m_Apps);
         if (m_Apps != null)
+        {
             m_Apps.setOnClickListener(new View.OnClickListener()
             {
                 @Override
@@ -482,29 +476,204 @@ public class MainCarActivity extends CarActivity
                     if (m_AppsDrawerOpen)
                         SwitchToMirrorSurface();
                     else
-                        SwitchToAppsGrid();
+                        SwitchToAppsGrid(ACTION_APP_LAUNCH);
                 }
             });
+            m_Apps.setOnLongClickListener(new View.OnLongClickListener()
+            {
+                @Override
+                public boolean onLongClick(View v)
+                {
+                    Log.d(TAG, "m_Apps.onLongClick");
+                    //todo : ideas???
+                    return false;
+                }
+            });
+        }
+
+        ImageView m_Fav1 = (ImageView)findViewById(R.id.m_Fav1);
+        if (m_Fav1 != null)
+        {
+            m_Fav1.setOnClickListener(new View.OnClickListener()
+            {
+                @Override
+                public void onClick(View v)
+                {
+                    Log.d(TAG, "m_Fav1.onClick");
+                    DoFavClick(ACTION_APP_FAV_1, false);
+                }
+            });
+            m_Fav1.setOnLongClickListener(new View.OnLongClickListener()
+            {
+                @Override
+                public boolean onLongClick(View v)
+                {
+                    Log.d(TAG, "m_Fav1.onLongClick");
+                    DoFavClick(ACTION_APP_FAV_1, true);
+                    return true;
+                }
+            });
+        }
+
+        ImageView m_Fav2 = (ImageView)findViewById(R.id.m_Fav2);
+        if (m_Fav2 != null)
+        {
+            m_Fav2.setOnClickListener(new View.OnClickListener()
+            {
+                @Override
+                public void onClick(View v)
+                {
+                    Log.d(TAG, "m_Fav2.onClick");
+                    DoFavClick(ACTION_APP_FAV_2, false);
+                }
+            });
+            m_Fav2.setOnLongClickListener(new View.OnLongClickListener()
+            {
+                @Override
+                public boolean onLongClick(View v)
+                {
+                    Log.d(TAG, "m_Fav2.onLongClick");
+                    DoFavClick(ACTION_APP_FAV_2, true);
+                    return true;
+                }
+            });
+        }
+
+        ImageView m_Fav3 = (ImageView)findViewById(R.id.m_Fav3);
+        if (m_Fav3 != null)
+        {
+            m_Fav3.setOnClickListener(new View.OnClickListener()
+            {
+                @Override
+                public void onClick(View v)
+                {
+                    Log.d(TAG, "m_Fav3.onClick");
+                    DoFavClick(ACTION_APP_FAV_3, false);
+                }
+            });
+            m_Fav3.setOnLongClickListener(new View.OnLongClickListener()
+            {
+                @Override
+                public boolean onLongClick(View v)
+                {
+                    Log.d(TAG, "m_Fav3.onLongClick");
+                    DoFavClick(ACTION_APP_FAV_3, true);
+                    return true;
+                }
+            });
+        }
     }
 
     @Override
-    public void onItemClick(AdapterView<?> parent, View view, int position, long id)
+    public void onAppClick(AppsGridFragment sender, AppEntry appEntry)
     {
-        Log.d(TAG, "onItemClick");
+        Log.d(TAG, "onAppClick");
+        if (m_AppsAction == ACTION_APP_LAUNCH)
+        {
+            LaunchActivity(appEntry.getApplicationInfo().packageName);
+        }
+        else
+        {
+            UpdateFavApp(m_AppsAction, appEntry.getApplicationInfo().packageName);
+            SwitchToMirrorSurface();
+        }
+    }
+
+    @Override
+    public boolean onAppLongClick(AppsGridFragment sender, AppEntry appEntry)
+    {
+        Log.d(TAG, "onAppLongClick");
+        return false;
+    }
+
+    private void LaunchActivity(String packageName)
+    {
+        Log.d(TAG, "LaunchActivity");
+        Intent intent = getPackageManager().getLaunchIntentForPackage(packageName);
+        if (intent != null)
+            startActivity(intent);
         SwitchToMirrorSurface();
     }
 
-    private void SwitchToAppsGrid()
+    private void DoFavClick(int action, boolean longPress)
+    {
+        Log.d(TAG, "DoFavClick");
+
+        String packageName = null;
+        switch (action)
+        {
+            case ACTION_APP_FAV_1: packageName = m_AppFav1;break;
+            case ACTION_APP_FAV_2: packageName = m_AppFav2;break;
+            case ACTION_APP_FAV_3: packageName = m_AppFav3;break;
+        }
+
+        if (longPress || packageName == null || packageName.isEmpty())
+            SwitchToAppsGrid(action);
+        else
+            LaunchActivity(packageName);
+    }
+
+    private void UpdateFavApp(int action, String packageName)
+    {
+        Log.d(TAG, "UpdateFavApp");
+
+        Drawable icon = getDrawable(R.drawable.ic_star_black);
+        try
+        {
+            if (packageName != null && !packageName.isEmpty())
+                icon = getPackageManager().getApplicationIcon(packageName);
+
+        }
+        catch (Exception e)
+        {
+            Log.d(TAG, "UpdateFavApp exception: " + e.toString());
+        }
+
+        switch (action)
+        {
+            case ACTION_APP_FAV_1:
+                m_AppFav1 = packageName;
+                ImageView favImage1 = (ImageView)findViewById(R.id.m_Fav1);
+                if (favImage1 != null) favImage1.setImageDrawable(icon);
+                break;
+            case ACTION_APP_FAV_2:
+                m_AppFav2 = packageName;
+                ImageView favImage2 = (ImageView)findViewById(R.id.m_Fav2);
+                if (favImage2 != null) favImage2.setImageDrawable(icon);
+                break;
+            case ACTION_APP_FAV_3:
+                m_AppFav3 = packageName;
+                ImageView favImage3 = (ImageView)findViewById(R.id.m_Fav3);
+                if (favImage3 != null) favImage3.setImageDrawable(icon);
+                break;
+        }
+    }
+
+    private void SwitchToAppsGrid(int action)
     {
         Log.d(TAG, "SwitchToAppsGrid");
-        FrameLayout m_AppsGridLayout = (FrameLayout)findViewById(R.id.m_AppsGridLayout);
+
+        LinearLayout m_AppsGridLayout = (LinearLayout)findViewById(R.id.m_AppsGridLayout);
         if (m_AppsGridLayout != null) m_AppsGridLayout.bringToFront();
+
+        m_AppsAction = action;
         m_AppsDrawerOpen = true;
+
+        TextView appTitle = (TextView)findViewById(R.id.m_AppsTitle);
+        if (appTitle != null)
+        {
+            if (m_AppsAction == ACTION_APP_LAUNCH)
+                appTitle.setText(R.string.launch_activity);
+            else
+                appTitle.setText(R.string.set_favourite_activity);
+        }
     }
     private void SwitchToMirrorSurface()
     {
         Log.d(TAG, "SwitchToMirrorSurface");
         if (m_SurfaceView != null) m_SurfaceView.bringToFront();
+
+        m_AppsAction = ACTION_APP_LAUNCH;
         m_AppsDrawerOpen = false;
     }
 
@@ -718,8 +887,31 @@ public class MainCarActivity extends CarActivity
                 m_ProjectionIntent = (Intent)msg.obj;
 
                 startScreenCapture();
+                m_DisplayRotation.CheckWriteSettingsPermission();
             }
         }
         return false;
+    }
+
+    private void LoadSharedPreferences()
+    {
+        Log.d(TAG, "LoadSharedPreferences");
+
+        SharedPreferences sharedPref = getSharedPreferences(PREFERENCES, MODE_PRIVATE);
+        UpdateFavApp(ACTION_APP_FAV_1, sharedPref.getString("m_AppFav1", null));
+        UpdateFavApp(ACTION_APP_FAV_2, sharedPref.getString("m_AppFav2", null));
+        UpdateFavApp(ACTION_APP_FAV_3, sharedPref.getString("m_AppFav3", null));
+    }
+
+    private void SaveSharedPreferences()
+    {
+        Log.d(TAG, "SaveSharedPreferences");
+
+        SharedPreferences sharedPref = getSharedPreferences(PREFERENCES, MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putString("m_AppFav1", m_AppFav1);
+        editor.putString("m_AppFav2", m_AppFav2);
+        editor.putString("m_AppFav3", m_AppFav3);
+        editor.commit();
     }
 }
