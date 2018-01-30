@@ -16,9 +16,9 @@ public class CarApplication extends Application
 
     public static int   ScreenRotation = ROTATION_0;
     public static Point ScreenSize = new Point();
-    public static OrientationEventListener OrientationListener;
 
-    private WindowManager windowManager;
+    private static OrientationEventListener m_OrientationListener;
+    private WindowManager                   m_WindowManager;
 
     @Override
     public void onCreate()
@@ -26,9 +26,9 @@ public class CarApplication extends Application
         Log.d(TAG, "onCreate");
         super.onCreate();
 
-        windowManager = (WindowManager)getSystemService(WINDOW_SERVICE);
+        m_WindowManager = (WindowManager)getSystemService(WINDOW_SERVICE);
         UpdateScreenRotation();
-        OrientationListener = new OrientationEventListener(this)
+        m_OrientationListener = new OrientationEventListener(this)
         {
             @Override
             public void onOrientationChanged(int orientation)
@@ -46,12 +46,26 @@ public class CarApplication extends Application
         UpdateScreenRotation();
     }
 
+    public static void EnableOrientationListener()
+    {
+        Log.d(TAG, "EnableOrientationListener");
+        if (m_OrientationListener != null)
+            m_OrientationListener.enable();
+    }
+
+    public static void DisableOrientationListener()
+    {
+        Log.d(TAG, "DisableOrientationListener");
+        if (m_OrientationListener != null)
+            m_OrientationListener.disable();
+    }
+
     private void UpdateScreenRotation()
     {
-        if (windowManager != null)
+        if (m_WindowManager != null)
         {
-            ScreenRotation = windowManager.getDefaultDisplay().getRotation();
-            windowManager.getDefaultDisplay().getSize(ScreenSize);
+            ScreenRotation = m_WindowManager.getDefaultDisplay().getRotation();
+            m_WindowManager.getDefaultDisplay().getSize(ScreenSize);
         }
     }
 }

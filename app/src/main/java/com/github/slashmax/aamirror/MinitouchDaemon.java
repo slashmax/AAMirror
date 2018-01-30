@@ -13,24 +13,19 @@ public class MinitouchDaemon
 {
     private static final String TAG = "MinitouchDaemon";
 
-    private boolean m_HasRoot;
+    private Context m_Context;
 
-    MinitouchDaemon()
+    MinitouchDaemon(Context context)
     {
         Log.d(TAG, "MinitouchDaemon");
-        m_HasRoot = false;
+        m_Context = context;
     }
 
-    public void run(Context context)
+    public void run()
     {
         Log.d(TAG, "run");
 
-        if (!Shell.SU.available())
-            return;
-
-        m_HasRoot = true;
-
-        String mt = install(context);
+        String mt = install();
         if (mt == null || mt.isEmpty())
             return;
 
@@ -45,20 +40,15 @@ public class MinitouchDaemon
             LogShell(Shell.SU.run("kill " + pid));
     }
 
-    public boolean HasRoot()
-    {
-        return m_HasRoot;
-    }
-
-    private String install(Context context)
+    private String install()
     {
         Log.d(TAG, "install");
 
         try
         {
-            FileOutputStream fileOutputStream = context.openFileOutput("minitouch", 0);
+            FileOutputStream fileOutputStream = m_Context.openFileOutput("minitouch", 0);
             String assetName = getAssetFile();
-            InputStream assetFile = context.getAssets().open(assetName);
+            InputStream assetFile = m_Context.getAssets().open(assetName);
             byte[] buffer = new byte[1024];
             int read;
             while ((read = assetFile.read(buffer)) != -1)
@@ -73,7 +63,7 @@ public class MinitouchDaemon
             return null;
         }
 
-        return context.getFileStreamPath("minitouch").getAbsolutePath();
+        return m_Context.getFileStreamPath("minitouch").getAbsolutePath();
     }
 
     private String getAssetFile()

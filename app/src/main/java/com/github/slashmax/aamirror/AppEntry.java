@@ -8,6 +8,13 @@ import java.io.File;
 
 public class AppEntry
 {
+    private final AppListLoader mLoader;
+    private final ApplicationInfo mInfo;
+    private final File mApkFile;
+    private String mLabel;
+    private Drawable mIcon;
+    private boolean mMounted;
+
     public AppEntry(AppListLoader loader, ApplicationInfo info)
     {
         mLoader = loader;
@@ -79,11 +86,4 @@ public class AppEntry
             }
         }
     }
-
-    private final AppListLoader mLoader;
-    private final ApplicationInfo mInfo;
-    private final File mApkFile;
-    private String mLabel;
-    private Drawable mIcon;
-    private boolean mMounted;
 }

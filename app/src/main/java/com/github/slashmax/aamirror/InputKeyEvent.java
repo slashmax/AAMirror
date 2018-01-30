@@ -40,9 +40,6 @@ public class InputKeyEvent
         }
     }
 
-    private TaskDirectExecutor m_Executor;
-    private Shell.Interactive  m_Shell;
-
     private class InputKeyEventTask extends AsyncTask<KeyCodeParam, Void, Void>
     {
         @Override
@@ -57,9 +54,12 @@ public class InputKeyEvent
         }
     }
 
-    InputKeyEvent()
+    private TaskDirectExecutor m_Executor;
+    private Shell.Interactive  m_Shell;
+
+    public void init()
     {
-        Log.d(TAG, "InputKeyEvent");
+        Log.d(TAG, "init");
         m_Executor = new TaskDirectExecutor();
         m_Shell = new Shell.Builder().useSU().setMinimalLogging(true).open();
     }
@@ -67,7 +67,10 @@ public class InputKeyEvent
     public void generate(int keyCode, boolean longPress)
     {
         Log.d(TAG, "generate");
-        InputKeyEventTask task = new InputKeyEventTask();
-        task.executeOnExecutor(m_Executor, new KeyCodeParam(keyCode, longPress));
+        if (m_Executor != null && m_Shell != null)
+        {
+            InputKeyEventTask task = new InputKeyEventTask();
+            task.executeOnExecutor(m_Executor, new KeyCodeParam(keyCode, longPress));
+        }
     }
 }

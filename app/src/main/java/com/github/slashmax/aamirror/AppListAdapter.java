@@ -14,27 +14,31 @@ public class AppListAdapter extends ArrayAdapter<AppEntry>
 {
     private final LayoutInflater mInflater;
 
-    public AppListAdapter(Context context) {
+    public AppListAdapter(Context context)
+    {
         super(context, android.R.layout.simple_list_item_2);
         mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
     }
 
-    public void setData(List<AppEntry> data) {
+    public void setData(List<AppEntry> data)
+    {
         clear();
-        if (data != null) {
+        if (data != null)
+        {
             addAll(data);
         }
     }
 
-    /**
-     * Populate new items in the list.
-     */
-    @Override public View getView(int position, View convertView, ViewGroup parent) {
+    @Override public View getView(int position, View convertView, ViewGroup parent)
+    {
         View view;
 
-        if (convertView == null) {
+        if (convertView == null)
+        {
             view = mInflater.inflate(R.layout.list_item_icon_text, parent, false);
-        } else {
+        }
+        else
+        {
             view = convertView;
         }
 

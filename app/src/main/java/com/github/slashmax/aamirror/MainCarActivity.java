@@ -1,8 +1,10 @@
 package com.github.slashmax.aamirror;
 
-import android.content.ComponentName;
+import android.app.KeyguardManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Color;
@@ -12,15 +14,13 @@ import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Message;
 import android.os.PowerManager;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.util.AttributeSet;
+import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -36,10 +36,16 @@ import com.google.android.apps.auto.sdk.CarActivity;
 import com.google.android.apps.auto.sdk.CarUiController;
 import com.google.android.apps.auto.sdk.DayNightStyle;
 
+import eu.chainfire.libsuperuser.Shell;
+
+import static android.content.Intent.ACTION_SCREEN_OFF;
+import static android.content.Intent.ACTION_SCREEN_ON;
+import static android.content.Intent.ACTION_USER_PRESENT;
 import static android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP;
 import static android.os.PowerManager.ON_AFTER_RELEASE;
-import static android.os.PowerManager.PARTIAL_WAKE_LOCK;
 import static android.os.PowerManager.SCREEN_DIM_WAKE_LOCK;
+import static android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION;
+import static android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS;
 import static android.view.MotionEvent.ACTION_DOWN;
 import static android.view.MotionEvent.ACTION_MOVE;
 import static android.view.MotionEvent.ACTION_POINTER_DOWN;
@@ -57,7 +63,7 @@ public class MainCarActivity extends CarActivity
     private static final String TAG = "MainCarActivity";
     private static final String PREFERENCES = "com.github.slashmax.aamirror.preferences";
 
-    private static final int        REQUEST_MEDIA_PROJECTION = 1;
+    private static final int        REQUEST_MEDIA_PROJECTION_PERMISSION = 1;
 
     private static final int        ACTION_APP_LAUNCH   = 0;
     private static final int        ACTION_APP_FAV_1    = 1;
@@ -71,49 +77,91 @@ public class MainCarActivity extends CarActivity
     private int                     m_AppsAction;
     private boolean                 m_AppsDrawerOpen;
 
-    private Surface                 m_Surface;
+    private boolean                 m_HasRoot;
+    private MinitouchDaemon         m_MinitouchDaemon;
+    private MinitouchSocket         m_MinitouchSocket;
+    private InputKeyEvent           m_InputKeyEvent;
+    private MinitouchAsyncTask      m_MinitouchTask;
+
+    private UnlockReceiver          m_UnlockReceiver;
+    private Handler                 m_RequestHandler;
+    private PowerManager.WakeLock   m_WakeLock;
+
     private SurfaceView             m_SurfaceView;
+    private Surface                 m_Surface;
 
     private VirtualDisplay          m_VirtualDisplay;
     private MediaProjection         m_MediaProjection;
+    private int                     m_ProjectionCode;
+    private Intent                  m_ProjectionIntent;
 
-    private MinitouchDaemon         m_MinitouchDaemon;
-    private MinitouchSocket         m_MinitouchSocket;
-    private MinitouchTask           m_MinitouchTask;
-    private InputKeyEvent           m_InputKeyEvent;
-
-    private DisplayRotation         m_DisplayRotation;
     private int                     m_ScreenRotation;
     private double                  m_ProjectionOffsetX;
     private double                  m_ProjectionOffsetY;
     private double                  m_ProjectionWidth;
     private double                  m_ProjectionHeight;
 
-    private int                     m_ProjectionCode;
-    private Intent                  m_ProjectionIntent;
+    private class MinitouchAsyncTask extends AsyncTask<Void, Void, Void>
+    {
+        @Override
+        protected Void doInBackground(Void... voids)
+        {
+            Log.d(TAG, "MinitouchTask.doInBackground");
+            m_MinitouchDaemon.run();
+            return null;
+        }
+    }
 
-    private PowerManager.WakeLock   m_WakeLock;
+    private class UnlockReceiver extends BroadcastReceiver
+    {
+        @Override
+        public void onReceive(Context context, Intent intent)
+        {
+            Log.d(TAG, "UnlockReceiver.onReceive: " + (intent != null ? intent.toString() : "null"));
+
+            if (intent != null)
+            {
+                if (intent.getAction().equals(ACTION_USER_PRESENT))
+                    OnUnlock();
+                else if (intent.getAction().equals(ACTION_SCREEN_ON))
+                    OnScreenOn();
+                else if (intent.getAction().equals(ACTION_SCREEN_OFF))
+                    OnScreenOff();
+            }
+        }
+    }
 
     @Override
     public void onCreate(Bundle bundle)
     {
         Log.d(TAG, "onCreate: " + (bundle != null ? bundle.toString() : "null"));
-
         setTheme(R.style.AppTheme);
         super.onCreate(bundle);
         setContentView(R.layout.activity_car_main);
 
-        setIgnoreConfigChanges(0x200);
         InitCarUiController(getCarUiController());
 
-        InitMinitouch();
+        m_AppsAction = ACTION_APP_LAUNCH;
+        m_AppsDrawerOpen = false;
+
+        m_HasRoot = Shell.SU.available();
+
+        m_MinitouchDaemon = new MinitouchDaemon(this);
+        m_MinitouchSocket = new MinitouchSocket();
+        m_InputKeyEvent = new InputKeyEvent();
+        m_MinitouchTask = new MinitouchAsyncTask();
+
+        m_UnlockReceiver = new UnlockReceiver();
+        m_RequestHandler = new Handler(this);
+
+        PowerManager powerManager = (PowerManager)getSystemService(Context.POWER_SERVICE);
+        if (powerManager != null)
+            m_WakeLock = powerManager.newWakeLock(SCREEN_DIM_WAKE_LOCK | ACQUIRE_CAUSES_WAKEUP, "AAMirrorWakeLock");
 
         m_SurfaceView = (SurfaceView)findViewById(R.id.m_SurfaceView);
         m_SurfaceView.getHolder().setFormat(PixelFormat.RGBA_8888);
-        m_Surface = m_SurfaceView.getHolder().getSurface();
         m_SurfaceView.setOnTouchListener(this);
-
-        m_AppsDrawerOpen = false;
+        m_Surface = m_SurfaceView.getHolder().getSurface();
 
         AppsGridFragment gridFragment = (AppsGridFragment)getSupportFragmentManager().findFragmentById(R.id.m_AppsGridFragment);
         if (gridFragment != null)
@@ -125,86 +173,31 @@ public class MainCarActivity extends CarActivity
         UpdateConfiguration(getResources().getConfiguration());
         InitButtonsActions();
         UpdateTouchTransformations(true);
-
         LoadSharedPreferences();
 
-        MediaProjectionManager mediaProjectionManager = (MediaProjectionManager)getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-        if(mediaProjectionManager != null)
-            ResultRequestActivity.startActivityForResult(this, new Handler(this), REQUEST_MEDIA_PROJECTION, mediaProjectionManager.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
+        RequestProjectionPermission();
 
-        m_DisplayRotation = new DisplayRotation(this);
-        m_DisplayRotation.onCreate();
+        if (m_HasRoot)
+        {
+            m_InputKeyEvent.init();
+            m_MinitouchTask.execute();
+        }
     }
 
     @Override
     public void onDestroy()
     {
         Log.d(TAG, "onDestroy");
-
-        m_DisplayRotation.onDestroy();
         super.onDestroy();
         stopScreenCapture();
-        FreeMinitouch();
-    }
-
-
-    private void InitCarUiController(CarUiController controller)
-    {
-        Log.d(TAG, "InitCarUiController");
-        controller.getStatusBarController().setTitle(getString(R.string.app_name));
-        controller.getStatusBarController().hideAppHeader();
-        controller.getStatusBarController().setAppBarAlpha(0.0f);
-        controller.getStatusBarController().setAppBarBackgroundColor(Color.WHITE);
-        controller.getStatusBarController().setDayNightStyle(DayNightStyle.AUTO);
-        controller.getMenuController().hideMenuButton();
-    }
-
-    @Nullable
-    @Override
-    public View onCreateView(String s, @NonNull Context context, @NonNull AttributeSet attributeSet)
-    {
-        Log.d(TAG, "onCreateView: " + s + " (" + (context != null ? context.toString() : "null") + ")");
-        return super.onCreateView(s, context, attributeSet);
-    }
-
-    @Override
-    public View findViewById(int i)
-    {
-        Log.d(TAG, "findViewById: " + i);
-        return super.findViewById(i);
-    }
-
-    @Override
-    public boolean onKeyDown(int i, KeyEvent keyEvent)
-    {
-        Log.d(TAG, "onKeyDown: " + (keyEvent != null ? keyEvent.toString() : "null"));
-        return super.onKeyDown(i, keyEvent);
-    }
-
-    @Override
-    public boolean onKeyLongPress(int i, KeyEvent keyEvent) {
-        Log.d(TAG, "onKeyLongPress: " + (keyEvent != null ? keyEvent.toString() : "null"));
-        return super.onKeyLongPress(i, keyEvent);
-    }
-
-    @Override
-    public boolean onKeyUp(int i, KeyEvent keyEvent) {
-        Log.d(TAG, "onKeyUp: " + (keyEvent != null ? keyEvent.toString() : "null"));
-        return super.onKeyUp(i, keyEvent);
-    }
-
-    @Override
-    public void onBackPressed()
-    {
-        Log.d(TAG, "onBackPressed");
-        super.onBackPressed();
-    }
-
-    @Override
-    public void onNewIntent(Intent intent)
-    {
-        Log.d(TAG, "onNewIntent: " + (intent != null ? intent.toString() : "null"));
-        super.onNewIntent(intent);
+        stopService(new Intent(this, OrientationService.class));
+        stopService(new Intent(this, BrightnessService.class));
+        m_MinitouchSocket.disconnect();
+        if (m_HasRoot)
+        {
+            m_MinitouchDaemon.kill(m_MinitouchSocket.getPid());
+            m_MinitouchTask.cancel(true);
+        }
     }
 
     @Override
@@ -227,39 +220,34 @@ public class MainCarActivity extends CarActivity
     {
         Log.d(TAG, "onStart");
         super.onStart();
-        if (CarApplication.OrientationListener != null)
-            CarApplication.OrientationListener.enable();
-
-        m_SurfaceView.setKeepScreenOn(true);
-
-        PowerManager pm = (PowerManager)getSystemService(Context.POWER_SERVICE);
-        if (pm != null)
-        {
-            m_WakeLock = pm.newWakeLock(SCREEN_DIM_WAKE_LOCK | ACQUIRE_CAUSES_WAKEUP, "AAMirrorWakeLock");
+        CarApplication.EnableOrientationListener();
+        if (m_WakeLock != null)
             m_WakeLock.acquire();
-        }
+        m_SurfaceView.setKeepScreenOn(true);
+        if (!IsLocked())
+            OnUnlock();
 
-        m_DisplayRotation.onStart();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(ACTION_USER_PRESENT);
+        filter.addAction(ACTION_SCREEN_ON);
+        filter.addAction(ACTION_SCREEN_OFF);
+        registerReceiver(m_UnlockReceiver, filter);
     }
 
     @Override
     public void onStop()
     {
         Log.d(TAG, "onStop");
-        stopScreenCapture();
-        if (CarApplication.OrientationListener != null)
-            CarApplication.OrientationListener.disable();
-
-        m_SurfaceView.setKeepScreenOn(false);
-
-        m_DisplayRotation.onStop();
-
-        if (m_WakeLock != null && m_WakeLock.isHeld())
-        {
-            m_WakeLock.release(ON_AFTER_RELEASE);
-            m_WakeLock = null;
-        }
         super.onStop();
+        stopScreenCapture();
+        CarApplication.DisableOrientationListener();
+        if (m_WakeLock != null && m_WakeLock.isHeld())
+            m_WakeLock.release(ON_AFTER_RELEASE);
+        m_SurfaceView.setKeepScreenOn(false);
+        startOrientationService(OrientationService.METHOD_NONE, OrientationService.ROTATION_0);
+        stopService(new Intent(this, BrightnessService.class));
+        unregisterReceiver(m_UnlockReceiver);
+
     }
 
     @Override
@@ -293,6 +281,27 @@ public class MainCarActivity extends CarActivity
             startScreenCapture();
     }
 
+    @Override
+    public void onConfigurationChanged(Configuration configuration)
+    {
+        Log.d(TAG, "onConfigurationChanged: " + (configuration != null ? configuration.toString() : "null"));
+        super.onConfigurationChanged(configuration);
+        UpdateConfiguration(configuration);
+    }
+
+    private void InitCarUiController(CarUiController controller)
+    {
+        Log.d(TAG, "InitCarUiController");
+        controller.getStatusBarController().setTitle(getString(R.string.app_name));
+        controller.getStatusBarController().hideAppHeader();
+        controller.getStatusBarController().setAppBarAlpha(0.0f);
+        controller.getStatusBarController().setAppBarBackgroundColor(Color.WHITE);
+        controller.getStatusBarController().setDayNightStyle(DayNightStyle.AUTO);
+        controller.getMenuController().hideMenuButton();
+
+        setIgnoreConfigChanges(0xFFFF);
+    }
+
     private void UpdateConfiguration(Configuration configuration)
     {
         if (configuration == null)
@@ -315,89 +324,44 @@ public class MainCarActivity extends CarActivity
             appsGridLayout.setBackgroundColor(backgroundColor);
     }
 
-    @Override
-    public void onConfigurationChanged(Configuration configuration)
+    private void OnUnlock()
     {
-        Log.d(TAG, "onConfigurationChanged: " + (configuration != null ? configuration.toString() : "null"));
-        super.onConfigurationChanged(configuration);
-        UpdateConfiguration(configuration);
+        Log.d(TAG, "OnUnlock");
+        startOrientationService(OrientationService.METHOD_FORCE, OrientationService.ROTATION_270);
+        m_SurfaceView.setKeepScreenOn(false);
+        startBrightnessService(BrightnessService.SCREEN_BRIGHTNESS_MODE_MANUAL, 0);
     }
 
-    @Override
-    public void onLowMemory()
+    private void OnScreenOn()
     {
-        Log.d(TAG, "onLowMemory");
-        super.onLowMemory();
+        Log.d(TAG, "OnScreenOn");
     }
 
-    @Override
-    public void onFrameRateChange(int i)
+    private  void OnScreenOff()
     {
-        Log.d(TAG, "onFrameRateChange: " + i);
-        super.onFrameRateChange(i);
+        Log.d(TAG, "OnScreenOff");
+        startOrientationService(OrientationService.METHOD_NONE, OrientationService.ROTATION_0);
     }
 
-    @Override
-    public void onPowerStateChange(int i)
+    private boolean IsLocked()
     {
-        Log.d(TAG, "onPowerStateChange: " + i);
-        super.onPowerStateChange(i);
+        Log.d(TAG, "IsLocked");
+        KeyguardManager km = (KeyguardManager)getSystemService(KEYGUARD_SERVICE);
+        return (km != null && km.isDeviceLocked());
     }
 
-    @Override
-    public Intent getIntent()
+    private void startOrientationService(int method, int rotation)
     {
-        Log.d(TAG, "getIntent");
-        return super.getIntent();
+        startService(new Intent(this, OrientationService.class)
+                .putExtra(OrientationService.METHOD, method)
+                .putExtra(OrientationService.ROTATION, rotation));
     }
 
-    @Override
-    public void setIntent(Intent intent)
+    private void startBrightnessService(int brightness, int brightnessMode)
     {
-        Log.d(TAG, "setIntent: " + (intent != null ? intent.toString() : "null"));
-        super.setIntent(intent);
-    }
-
-    @Override
-    public void startCarActivity(Intent intent)
-    {
-        Log.d(TAG, "startCarActivity: " + (intent != null ? intent.toString() : "null"));
-        super.startCarActivity(intent);
-    }
-
-    @Override
-    public void onAccessibilityScanRequested(IBinder iBinder)
-    {
-        Log.d(TAG, "onAccessibilityScanRequested: " + (iBinder != null ? iBinder.toString() : "null"));
-        super.onAccessibilityScanRequested(iBinder);
-    }
-
-    @Override
-    public ComponentName startService(Intent service)
-    {
-        Log.d(TAG, "startService: " + (service != null ? service.toString() : "null"));
-        return super.startService(service);
-    }
-
-    @Override
-    public boolean stopService(Intent name)
-    {
-        Log.d(TAG, "stopService: " + (name != null ? name.toString() : "null"));
-        return super.stopService(name);
-    }
-
-    @Override
-    public Object getSystemService(String name)
-    {
-        Log.d(TAG, "getSystemService: " + name);
-        return super.getSystemService(name);
-    }
-
-    @Override
-    public String getSystemServiceName(Class<?> serviceClass)
-    {
-        Log.d(TAG, "getSystemServiceName: " + (serviceClass != null ? serviceClass.toString() : "null"));
-        return super.getSystemServiceName(serviceClass);
+        startService(new Intent(this, BrightnessService.class)
+                .putExtra(BrightnessService.BRIGHTNESS, brightness)
+                .putExtra(BrightnessService.BRIGHTNESS_MODE, brightnessMode));
     }
 
     private void InitButtonsActions()
@@ -677,17 +641,12 @@ public class MainCarActivity extends CarActivity
         m_AppsDrawerOpen = false;
     }
 
-    private boolean GenerateKeyEvent(int keyCode, boolean longPress)
+    private void GenerateKeyEvent(int keyCode, boolean longPress)
     {
         Log.d(TAG, "GenerateKeyEvent");
-        if (m_MinitouchDaemon == null || !m_MinitouchDaemon.HasRoot())
-            return false;
 
-        if (m_InputKeyEvent == null)
-            m_InputKeyEvent = new InputKeyEvent();
-
-        m_InputKeyEvent.generate(keyCode, longPress);
-        return true;
+        if (m_InputKeyEvent != null)
+            m_InputKeyEvent.generate(keyCode, longPress);
     }
 
     private void startScreenCapture()
@@ -741,40 +700,6 @@ public class MainCarActivity extends CarActivity
         }
     }
 
-    private class MinitouchTask extends AsyncTask<Context, Void, Void>
-    {
-        @Override
-        protected Void doInBackground(Context... contexts)
-        {
-            Log.d(TAG, "doInBackground");
-            m_MinitouchDaemon.run(contexts[0]);
-            return null;
-        }
-    }
-
-    private boolean InitMinitouch()
-    {
-        Log.d(TAG, "InitMinitouch");
-        m_MinitouchDaemon = new MinitouchDaemon();
-        m_MinitouchSocket = new MinitouchSocket();
-        m_MinitouchTask = new MinitouchTask();
-
-        m_MinitouchTask.execute(this);
-
-        return true;
-    }
-
-    private boolean FreeMinitouch()
-    {
-        Log.d(TAG, "FreeMinitouch");
-
-        m_MinitouchSocket.disconnect();
-        m_MinitouchDaemon.kill(m_MinitouchSocket.getPid());
-        m_MinitouchTask.cancel(true);
-
-        return true;
-    }
-
     private void UpdateTouchTransformations(boolean force)
     {
         if (CarApplication.ScreenRotation == m_ScreenRotation && !force)
@@ -786,9 +711,6 @@ public class MainCarActivity extends CarActivity
 
         double SurfaceWidth = m_SurfaceView.getWidth();
         double SurfaceHeight = m_SurfaceView.getHeight();
-
-        Log.d(TAG, "UpdateTouchTransformations Screen: " + ScreenWidth + " x " + ScreenHeight);
-        Log.d(TAG, "UpdateTouchTransformations Surface: " + SurfaceWidth + " x " + SurfaceHeight);
 
         double factX = SurfaceWidth / ScreenWidth;
         double factY = SurfaceHeight / ScreenHeight;
@@ -881,16 +803,53 @@ public class MainCarActivity extends CarActivity
 
         if (msg != null)
         {
-            if (msg.what == REQUEST_MEDIA_PROJECTION)
+            if (msg.what == REQUEST_MEDIA_PROJECTION_PERMISSION)
             {
                 m_ProjectionCode = msg.arg2;
                 m_ProjectionIntent = (Intent)msg.obj;
 
                 startScreenCapture();
-                m_DisplayRotation.CheckWriteSettingsPermission();
+                RequestWriteSettingsPermission();
+                RequestOverlayPermission();
             }
         }
         return false;
+    }
+
+    private void startActivityForResult(int what, Intent intent)
+    {
+        Log.d(TAG, "startActivityForResult");
+        ResultRequestActivity.startActivityForResult(this, m_RequestHandler, what, intent, what);
+    }
+
+    private void RequestProjectionPermission()
+    {
+        Log.d(TAG, "RequestProjectionPermission");
+        MediaProjectionManager mediaProjectionManager = (MediaProjectionManager)getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+        if(mediaProjectionManager != null)
+            startActivityForResult(REQUEST_MEDIA_PROJECTION_PERMISSION, mediaProjectionManager.createScreenCaptureIntent());
+    }
+
+    private void startActivity(String action)
+    {
+        Intent intent = new Intent(action);
+        intent.setData(Uri.parse("package:" + getPackageName()));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+    }
+
+    private void RequestWriteSettingsPermission()
+    {
+        Log.d(TAG, "RequestWriteSettingsPermission");
+        if (!Settings.System.canWrite(this))
+            startActivity(ACTION_MANAGE_WRITE_SETTINGS);
+    }
+
+    private void RequestOverlayPermission()
+    {
+        Log.d(TAG, "RequestOverlayPermission");
+        if (!Settings.canDrawOverlays(this))
+            startActivity(ACTION_MANAGE_OVERLAY_PERMISSION);
     }
 
     private void LoadSharedPreferences()
@@ -912,6 +871,6 @@ public class MainCarActivity extends CarActivity
         editor.putString("m_AppFav1", m_AppFav1);
         editor.putString("m_AppFav2", m_AppFav2);
         editor.putString("m_AppFav3", m_AppFav3);
-        editor.commit();
+        editor.apply();
     }
 }
