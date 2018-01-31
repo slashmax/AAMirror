@@ -8,7 +8,6 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Color;
-import android.graphics.PixelFormat;
 import android.graphics.drawable.Drawable;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
@@ -21,6 +20,8 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
 import android.provider.Settings;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -87,6 +88,7 @@ public class MainCarActivity extends CarActivity
     private Handler                 m_RequestHandler;
     private PowerManager.WakeLock   m_WakeLock;
 
+    private DrawerLayout            m_DrawerLayout;
     private SurfaceView             m_SurfaceView;
     private Surface                 m_Surface;
 
@@ -158,8 +160,8 @@ public class MainCarActivity extends CarActivity
         if (powerManager != null)
             m_WakeLock = powerManager.newWakeLock(SCREEN_DIM_WAKE_LOCK | ACQUIRE_CAUSES_WAKEUP, "AAMirrorWakeLock");
 
+        m_DrawerLayout = (DrawerLayout)findViewById(R.id.m_DrawerLayout);
         m_SurfaceView = (SurfaceView)findViewById(R.id.m_SurfaceView);
-        m_SurfaceView.getHolder().setFormat(PixelFormat.RGBA_8888);
         m_SurfaceView.setOnTouchListener(this);
         m_Surface = m_SurfaceView.getHolder().getSurface();
 
@@ -223,15 +225,23 @@ public class MainCarActivity extends CarActivity
         CarApplication.EnableOrientationListener();
         if (m_WakeLock != null)
             m_WakeLock.acquire();
-        m_SurfaceView.setKeepScreenOn(true);
-        if (!IsLocked())
-            OnUnlock();
 
+        OnScreenOn();
         IntentFilter filter = new IntentFilter();
         filter.addAction(ACTION_USER_PRESENT);
         filter.addAction(ACTION_SCREEN_ON);
         filter.addAction(ACTION_SCREEN_OFF);
         registerReceiver(m_UnlockReceiver, filter);
+
+        m_DrawerLayout.openDrawer(GravityCompat.START, false);
+        m_RequestHandler.postDelayed(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                m_DrawerLayout.closeDrawer(GravityCompat.START, true);
+            }
+        }, 2000);
     }
 
     @Override
@@ -243,11 +253,9 @@ public class MainCarActivity extends CarActivity
         CarApplication.DisableOrientationListener();
         if (m_WakeLock != null && m_WakeLock.isHeld())
             m_WakeLock.release(ON_AFTER_RELEASE);
-        m_SurfaceView.setKeepScreenOn(false);
-        startOrientationService(OrientationService.METHOD_NONE, OrientationService.ROTATION_0);
-        stopService(new Intent(this, BrightnessService.class));
-        unregisterReceiver(m_UnlockReceiver);
 
+        OnScreenOff();
+        unregisterReceiver(m_UnlockReceiver);
     }
 
     @Override
@@ -278,7 +286,9 @@ public class MainCarActivity extends CarActivity
         super.onWindowFocusChanged(focus, b1);
 
         if (focus)
+        {
             startScreenCapture();
+        }
     }
 
     @Override
@@ -328,19 +338,24 @@ public class MainCarActivity extends CarActivity
     {
         Log.d(TAG, "OnUnlock");
         startOrientationService(OrientationService.METHOD_FORCE, OrientationService.ROTATION_270);
-        m_SurfaceView.setKeepScreenOn(false);
         startBrightnessService(BrightnessService.SCREEN_BRIGHTNESS_MODE_MANUAL, 0);
+        m_SurfaceView.setKeepScreenOn(false);
     }
 
     private void OnScreenOn()
     {
         Log.d(TAG, "OnScreenOn");
+        m_SurfaceView.setKeepScreenOn(true);
+        if (!IsLocked())
+            OnUnlock();
     }
 
     private  void OnScreenOff()
     {
         Log.d(TAG, "OnScreenOff");
         startOrientationService(OrientationService.METHOD_NONE, OrientationService.ROTATION_0);
+        stopService(new Intent(this, BrightnessService.class));
+        m_SurfaceView.setKeepScreenOn(false);
     }
 
     private boolean IsLocked()
@@ -575,6 +590,8 @@ public class MainCarActivity extends CarActivity
             SwitchToAppsGrid(action);
         else
             LaunchActivity(packageName);
+
+        m_DrawerLayout.closeDrawer(GravityCompat.START);
     }
 
     private void UpdateFavApp(int action, String packageName)
