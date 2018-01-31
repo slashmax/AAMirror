@@ -2,6 +2,8 @@ package com.github.slashmax.aamirror;
 
 import android.app.Service;
 import android.content.Intent;
+import android.graphics.PixelFormat;
+import android.os.Build;
 import android.os.IBinder;
 import android.provider.Settings;
 import android.support.annotation.Nullable;
@@ -16,8 +18,9 @@ import static android.content.pm.ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAI
 import static android.provider.Settings.System.ACCELEROMETER_ROTATION;
 import static android.provider.Settings.System.USER_ROTATION;
 import static android.view.View.VISIBLE;
+import static android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
 import static android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
-import static android.view.WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY;
+import static android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
 
 public class OrientationService extends Service
 {
@@ -34,6 +37,10 @@ public class OrientationService extends Service
     public static final int ROTATION_90     = android.view.Surface.ROTATION_90;
     public static final int ROTATION_180    = android.view.Surface.ROTATION_180;
     public static final int ROTATION_270    = android.view.Surface.ROTATION_270;
+
+    private static final int ANDROID_OREO = 26;
+    static final int TYPE_SYSTEM_OVERLAY = Build.VERSION.SDK_INT < ANDROID_OREO ?
+            WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY : WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
 
     private int             m_AutoRotation;
     private int             m_UserRotation;
@@ -183,7 +190,9 @@ public class OrientationService extends Service
         m_OverlayLayout = new LinearLayout(this);
         m_OverlayLayout.setVisibility(VISIBLE);
 
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(TYPE_SYSTEM_OVERLAY, FLAG_NOT_FOCUSABLE);
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(WRAP_CONTENT, WRAP_CONTENT, TYPE_SYSTEM_OVERLAY,
+                FLAG_NOT_FOCUSABLE | FLAG_NOT_TOUCHABLE, PixelFormat.TRANSPARENT);
+        params.alpha = 0f;
         params.screenOrientation = orientation;
 
         wm.addView(m_OverlayLayout, params);
