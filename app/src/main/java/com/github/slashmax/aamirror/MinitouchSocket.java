@@ -22,7 +22,7 @@ public class MinitouchSocket
     private double   MaxPressure;
     private int      Pid;
 
-    public boolean connect()
+    boolean connect()
     {
         Log.d(TAG, "connect");
 
@@ -35,7 +35,6 @@ public class MinitouchSocket
             {
                 m_Output = socket.getOutputStream();
                 m_Socket = socket;
-                return true;
             }
             else
             {
@@ -46,10 +45,10 @@ public class MinitouchSocket
         {
             Log.d(TAG, "connect exception: " + e.toString());
         }
-        return false;
+        return isConnected();
     }
 
-    public void disconnect()
+    void disconnect()
     {
         Log.d(TAG, "disconnect");
         if (isConnected())
@@ -67,12 +66,12 @@ public class MinitouchSocket
         }
     }
 
-    public boolean isConnected()
+    boolean isConnected()
     {
         return (m_Socket != null);
     }
 
-    public int getPid()
+    int getPid()
     {
         Log.d(TAG, "getPid: " + Pid);
         return Pid;
@@ -153,7 +152,7 @@ public class MinitouchSocket
         return (x >= 0.0 && x <= 1.0 && y >= 0.0 && y <= 1.0);
     }
 
-    public boolean TouchDown(int id, double x, double y, double pressure)
+    boolean TouchDown(int id, double x, double y, double pressure)
     {
         if (!ValidateBounds(x, y))
             return true;
@@ -163,7 +162,7 @@ public class MinitouchSocket
         return OutputWrite(String.format("d %d %d %d %d\n", id, (int)x, (int)y, (int)pressure));
     }
 
-    public boolean TouchMove(int id, double x, double y, double pressure)
+    boolean TouchMove(int id, double x, double y, double pressure)
     {
         if (!ValidateBounds(x, y))
             return true;
@@ -173,12 +172,12 @@ public class MinitouchSocket
         return OutputWrite(String.format("m %d %d %d %d\n", id, (int)x, (int)y, (int)pressure));
     }
 
-    public boolean TouchUp(int id)
+    boolean TouchUp(int id)
     {
         return OutputWrite(String.format("u %d\n", id));
     }
 
-    public boolean TouchUpAll()
+    boolean TouchUpAll()
     {
         boolean ok = true;
         for (int i = 0; i < MaxContact; i++)
@@ -186,7 +185,7 @@ public class MinitouchSocket
         return ok;
     }
 
-    public boolean TouchCommit()
+    boolean TouchCommit()
     {
         return OutputWrite("c\n");
     }

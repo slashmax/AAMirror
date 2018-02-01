@@ -1,6 +1,7 @@
 package com.github.slashmax.aamirror;
 
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
@@ -41,7 +42,6 @@ public class AppsGridFragment extends CarFragment
     {
         Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
-
         m_AppListAdapter = new AppListAdapter(getContext());
     }
 
@@ -54,18 +54,17 @@ public class AppsGridFragment extends CarFragment
 
     @Nullable
     @Override
-    public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState)
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState)
     {
         Log.d(TAG, "onCreateView");
         return inflater.inflate(R.layout.apps_grid_view, container, false);
     }
 
     @Override
-    public void onViewCreated(View view, @Nullable Bundle savedInstanceState)
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState)
     {
         Log.d(TAG, "onViewCreated");
         super.onViewCreated(view, savedInstanceState);
-
         m_GridView = view.findViewById(R.id.m_AppsGridView);
     }
 
@@ -88,7 +87,6 @@ public class AppsGridFragment extends CarFragment
             m_GridView.setOnItemClickListener(this);
             m_GridView.setOnItemLongClickListener(this);
         }
-
         getLoaderManager().initLoader(0, null, this);
     }
 

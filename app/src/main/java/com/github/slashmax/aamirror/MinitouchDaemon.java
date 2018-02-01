@@ -9,7 +9,7 @@ import java.util.List;
 
 import eu.chainfire.libsuperuser.Shell;
 
-public class MinitouchDaemon
+class MinitouchDaemon
 {
     private static final String TAG = "MinitouchDaemon";
 
@@ -21,7 +21,7 @@ public class MinitouchDaemon
         m_Context = context;
     }
 
-    public void run()
+    void run()
     {
         Log.d(TAG, "run");
 
@@ -33,7 +33,7 @@ public class MinitouchDaemon
         LogShell(Shell.SU.run(mt));
     }
 
-    public void kill(int pid)
+    void kill(int pid)
     {
         Log.d(TAG, "kill: " + pid);
         if (pid != 0)
@@ -79,9 +79,9 @@ public class MinitouchDaemon
         LogShell(result);
 
         if (result != null && !result.isEmpty())
-            return new String(result.get(0));
+            return result.get(0);
 
-        return new String("armeabi");
+        return "armeabi";
     }
 
     private int detectSdk()

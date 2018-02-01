@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorCarBackgroundDay"
+    android:orientation="vertical">
+
+    <ImageView
+        android:id="@+id/m_Back"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center_horizontal"
+        android:src="@drawable/ic_arrow_back_black" />
+
+    <ImageView
+        android:id="@+id/m_Menu"
+        android:layout_width="48dp"
+        android:layout_height="66dp"
+        android:layout_gravity="center_horizontal"
+        android:src="@drawable/ic_menu_black" />
+
+    <ImageView
+        android:id="@+id/m_Apps"
+        android:layout_width="48dp"
+        android:layout_height="66dp"
+        android:layout_gravity="center_horizontal"
+        android:src="@drawable/ic_apps_black" />
+
+    <ImageView
+        android:id="@+id/m_Fav1"
+        android:layout_width="48dp"
+        android:layout_height="66dp"
+        android:layout_gravity="center_horizontal"
+        android:src="@drawable/ic_star_black" />
+
+    <ImageView
+        android:id="@+id/m_Fav2"
+        android:layout_width="48dp"
+        android:layout_height="66dp"
+        android:layout_gravity="center_horizontal"
+        android:src="@drawable/ic_star_black" />
+
+    <ImageView
+        android:id="@+id/m_Fav3"
+        android:layout_width="48dp"
+        android:layout_height="66dp"
+        android:layout_gravity="center_horizontal"
+        android:src="@drawable/ic_star_black" />
+
+</LinearLayout>

@@ -39,7 +39,6 @@ public class BrightnessService extends Service
         {
             int brightness = intent.getIntExtra(BRIGHTNESS, 255);
             int brightnessMode = intent.getIntExtra(BRIGHTNESS_MODE, SCREEN_BRIGHTNESS_MODE_AUTOMATIC);
-
             WriteBrightnessSettings(brightness, brightnessMode);
         }
         return super.onStartCommand(intent, flags, startId);
@@ -81,7 +80,7 @@ public class BrightnessService extends Service
         return Settings.System.canWrite(this);
     }
 
-    private boolean ReadBrightnessSettings()
+    private void ReadBrightnessSettings()
     {
         Log.d(TAG, "ReadBrightnessSettings");
         try
@@ -92,20 +91,16 @@ public class BrightnessService extends Service
         catch (Exception e)
         {
             Log.d(TAG, "ReadBrightnessSettings exception: " + e.toString());
-            return false;
         }
-        return true;
     }
 
-    private boolean WriteBrightnessSettings(int brightness, int brightnessMode)
+    private void WriteBrightnessSettings(int brightness, int brightnessMode)
     {
         Log.d(TAG, "WriteBrightnessSettings");
-
-        if (!CanWriteSettings())
-            return false;
-
-        Settings.System.putInt(getContentResolver(), SCREEN_BRIGHTNESS, brightness);
-        Settings.System.putInt(getContentResolver(), SCREEN_BRIGHTNESS_MODE, brightnessMode);
-        return true;
+        if (CanWriteSettings())
+        {
+            Settings.System.putInt(getContentResolver(), SCREEN_BRIGHTNESS, brightness);
+            Settings.System.putInt(getContentResolver(), SCREEN_BRIGHTNESS_MODE, brightnessMode);
+        }
     }
 }

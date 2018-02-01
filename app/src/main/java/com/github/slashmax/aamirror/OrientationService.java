@@ -58,7 +58,6 @@ public class OrientationService extends Service
     public int onStartCommand(Intent intent, int flags, int startId)
     {
         Log.d(TAG, "onStartCommand");
-
         if (intent != null)
         {
             int method = intent.getIntExtra(METHOD, METHOD_NONE);
@@ -78,7 +77,6 @@ public class OrientationService extends Service
                     break;
             }
         }
-
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -87,7 +85,6 @@ public class OrientationService extends Service
     {
         Log.d(TAG, "onDestroy");
         super.onDestroy();
-
         Reset();
     }
 
@@ -122,7 +119,6 @@ public class OrientationService extends Service
     private void Reset()
     {
         Log.d(TAG, "Reset");
-
         WriteRotationSettings(m_AutoRotation, m_UserRotation);
         RemoveOverlay();
     }
@@ -146,7 +142,7 @@ public class OrientationService extends Service
         return Settings.System.canWrite(this);
     }
 
-    private boolean ReadRotationSettings()
+    private void ReadRotationSettings()
     {
         Log.d(TAG, "ReadRotationSettings");
         try
@@ -157,21 +153,18 @@ public class OrientationService extends Service
         catch (Exception e)
         {
             Log.d(TAG, "ReadRotationSettings exception: " + e.toString());
-            return false;
         }
-        return true;
     }
 
-    private boolean WriteRotationSettings(int autoRotation, int userRotation)
+    private void WriteRotationSettings(int autoRotation, int userRotation)
     {
         Log.d(TAG, "WriteRotationSettings");
 
-        if (!CanWriteSettings())
-            return false;
-
-        Settings.System.putInt(getContentResolver(), ACCELEROMETER_ROTATION, autoRotation);
-        Settings.System.putInt(getContentResolver(), USER_ROTATION, userRotation);
-        return true;
+        if (CanWriteSettings())
+        {
+            Settings.System.putInt(getContentResolver(), ACCELEROMETER_ROTATION, autoRotation);
+            Settings.System.putInt(getContentResolver(), USER_ROTATION, userRotation);
+        }
     }
 
     private boolean CanCreateOverlay()

@@ -8,81 +8,81 @@ import java.io.File;
 
 public class AppEntry
 {
-    private final AppListLoader mLoader;
-    private final ApplicationInfo mInfo;
-    private final File mApkFile;
-    private String mLabel;
-    private Drawable mIcon;
-    private boolean mMounted;
+    private final AppListLoader     m_Loader;
+    private final ApplicationInfo   m_Info;
+    private final File              m_ApkFile;
+    private String                  m_Label;
+    private Drawable                m_Icon;
+    private boolean                 m_Mounted;
 
-    public AppEntry(AppListLoader loader, ApplicationInfo info)
+    AppEntry(AppListLoader loader, ApplicationInfo info)
     {
-        mLoader = loader;
-        mInfo = info;
-        mApkFile = new File(info.sourceDir);
+        m_Loader = loader;
+        m_Info = info;
+        m_ApkFile = new File(info.sourceDir);
     }
 
-    public ApplicationInfo getApplicationInfo()
+    ApplicationInfo getApplicationInfo()
     {
-        return mInfo;
+        return m_Info;
     }
 
-    public String getLabel()
+    String getLabel()
     {
-        return mLabel;
+        return m_Label;
     }
 
     public Drawable getIcon()
     {
-        if (mIcon == null)
+        if (m_Icon == null)
         {
-            if (mApkFile.exists())
+            if (m_ApkFile.exists())
             {
-                mIcon = mInfo.loadIcon(mLoader.mPm);
-                return mIcon;
+                m_Icon = m_Info.loadIcon(m_Loader.m_PackageManager);
+                return m_Icon;
             }
             else
             {
-                mMounted = false;
+                m_Mounted = false;
             }
         }
-        else if (!mMounted)
+        else if (!m_Mounted)
         {
-            if (mApkFile.exists())
+            if (m_ApkFile.exists())
             {
-                mMounted = true;
-                mIcon = mInfo.loadIcon(mLoader.mPm);
-                return mIcon;
+                m_Mounted = true;
+                m_Icon = m_Info.loadIcon(m_Loader.m_PackageManager);
+                return m_Icon;
             }
         }
         else
         {
-            return mIcon;
+            return m_Icon;
         }
 
-        return mLoader.getContext().getResources().getDrawable(
-                android.R.drawable.sym_def_app_icon);
+        return m_Loader.getContext().getDrawable(android.R.drawable.sym_def_app_icon);
     }
 
-    @Override public String toString()
+    @Override
+    public String toString()
     {
-        return mLabel;
+        return m_Label;
     }
 
     void loadLabel(Context context)
     {
-        if (mLabel == null || !mMounted)
+        if (m_Label == null || !m_Mounted)
         {
-            if (!mApkFile.exists())
+            if (!m_ApkFile.exists())
             {
-                mMounted = false;
-                mLabel = mInfo.packageName;
+                m_Mounted = false;
+                m_Label = m_Info.packageName;
             }
             else
             {
-                mMounted = true;
-                CharSequence label = mInfo.loadLabel(context.getPackageManager());
-                mLabel = label != null ? label.toString() : mInfo.packageName;
+                m_Mounted = true;
+                CharSequence label = m_Info.loadLabel(context.getPackageManager());
+                m_Label = label != null ? label.toString() : m_Info.packageName;
             }
         }
     }

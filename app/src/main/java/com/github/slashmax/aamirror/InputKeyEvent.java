@@ -7,7 +7,7 @@ import java.util.concurrent.Executor;
 
 import eu.chainfire.libsuperuser.Shell;
 
-public class InputKeyEvent
+class InputKeyEvent
 {
     private static final String TAG = "InputKeyEvent";
 
@@ -22,12 +22,12 @@ public class InputKeyEvent
             m_LongPress = longPress;
         }
 
-        public int GetKeyCode()
+        int GetKeyCode()
         {
             return m_KeyCode;
         }
 
-        public  boolean IsLongPress()
+        boolean IsLongPress()
         {
             return m_LongPress;
         }
@@ -57,14 +57,14 @@ public class InputKeyEvent
     private TaskDirectExecutor m_Executor;
     private Shell.Interactive  m_Shell;
 
-    public void init()
+    void init()
     {
         Log.d(TAG, "init");
         m_Executor = new TaskDirectExecutor();
         m_Shell = new Shell.Builder().useSU().setMinimalLogging(true).open();
     }
 
-    public void generate(int keyCode, boolean longPress)
+    void generate(int keyCode, boolean longPress)
     {
         Log.d(TAG, "generate");
         if (m_Executor != null && m_Shell != null)

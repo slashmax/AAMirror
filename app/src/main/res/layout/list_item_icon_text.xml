@@ -4,12 +4,12 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <ImageView android:id="@+id/icon"
+    <ImageView android:id="@+id/list_item_icon"
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_gravity="center_horizontal"/>
 
-    <TextView android:id="@+id/text"
+    <TextView android:id="@+id/list_item_text"
         android:layout_gravity="center_horizontal"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

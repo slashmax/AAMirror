@@ -21,7 +21,6 @@ public class ResultRequestActivity extends Activity
     protected void onCreate(Bundle savedInstanceState)
     {
         Log.d(TAG, "onCreate");
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_result_request);
         startActivityForResult();
@@ -38,9 +37,7 @@ public class ResultRequestActivity extends Activity
     protected void onActivityResult(int requestCode, int resultCode, Intent data)
     {
         Log.d(TAG, "onActivityResult");
-
         super.onActivityResult(requestCode, resultCode, data);
-
         if (ResultHandler != null)
         {
             Message msg = Message.obtain(ResultHandler, RequestWhat, requestCode, resultCode, data);
@@ -52,7 +49,6 @@ public class ResultRequestActivity extends Activity
     private void startActivityForResult()
     {
         Log.d(TAG, "startActivityForResult");
-
         if (ResultHandler != null && RequestIntent != null)
             startActivityForResult(RequestIntent, RequestCode);
         else
