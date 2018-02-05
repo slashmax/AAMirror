@@ -8,7 +8,6 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Color;
-import android.graphics.Point;
 import android.graphics.drawable.Drawable;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
@@ -36,6 +35,8 @@ import com.google.android.apps.auto.sdk.CarActivity;
 import com.google.android.apps.auto.sdk.CarUiController;
 import com.google.android.apps.auto.sdk.DayNightStyle;
 
+import java.util.concurrent.Executor;
+
 import eu.chainfire.libsuperuser.Shell;
 
 import static android.content.Intent.ACTION_SCREEN_OFF;
@@ -46,6 +47,7 @@ import static android.os.PowerManager.ON_AFTER_RELEASE;
 import static android.os.PowerManager.SCREEN_DIM_WAKE_LOCK;
 import static android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION;
 import static android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS;
+import static android.view.MotionEvent.ACTION_CANCEL;
 import static android.view.MotionEvent.ACTION_DOWN;
 import static android.view.MotionEvent.ACTION_MOVE;
 import static android.view.MotionEvent.ACTION_POINTER_DOWN;
@@ -79,8 +81,10 @@ public class MainCarActivity extends CarActivity
     private boolean                 m_HasRoot;
     private MinitouchDaemon         m_MinitouchDaemon;
     private MinitouchSocket         m_MinitouchSocket;
-    private InputKeyEvent           m_InputKeyEvent;
     private MinitouchAsyncTask      m_MinitouchTask;
+
+    private ShellDirectExecutor         m_ShellExecutor;
+    private static Shell.Interactive    m_Shell;
 
     private UnlockReceiver          m_UnlockReceiver;
     private Handler                 m_RequestHandler;
@@ -114,6 +118,25 @@ public class MainCarActivity extends CarActivity
         {
             Log.d(TAG, "MinitouchTask.doInBackground");
             m_MinitouchDaemon.run();
+            return null;
+        }
+    }
+
+    private class ShellDirectExecutor implements Executor
+    {
+        public void execute(Runnable r) {
+            new Thread(r).start();
+        }
+    }
+
+    private static class ShellAsyncTask extends AsyncTask<String, Void, Void>
+    {
+        @Override
+        protected Void doInBackground(String... params)
+        {
+            Log.d(TAG, "doInBackground");
+            if (m_Shell != null)
+                m_Shell.addCommand(params[0]);
             return null;
         }
     }
@@ -161,10 +184,16 @@ public class MainCarActivity extends CarActivity
             Log.d(TAG, "onDrawerSlide");
             super.onDrawerSlide(drawerView, slideOffset);
             if (m_Drawer != null)
-            {
                 m_Drawer.bringChildToFront(drawerView);
-                m_Drawer.requestLayout();
-            }
+        }
+
+        @Override
+        public void onDrawerOpened(View drawerView)
+        {
+            Log.d(TAG, "onDrawerOpened");
+            super.onDrawerOpened(drawerView);
+            if (m_Drawer != null)
+                m_Drawer.bringChildToFront(drawerView);
         }
 
         @Override
@@ -192,8 +221,8 @@ public class MainCarActivity extends CarActivity
 
         m_MinitouchDaemon = new MinitouchDaemon(this);
         m_MinitouchSocket = new MinitouchSocket();
-        m_InputKeyEvent = new InputKeyEvent();
         m_MinitouchTask = new MinitouchAsyncTask();
+        m_ShellExecutor= new ShellDirectExecutor();
 
         m_UnlockReceiver = new UnlockReceiver();
         m_RequestHandler = new Handler(this);
@@ -207,11 +236,8 @@ public class MainCarActivity extends CarActivity
         m_AppsDrawer = (LinearLayout)findViewById(R.id.m_AppsDrawer);
         m_SurfaceView = (SurfaceView)findViewById(R.id.m_SurfaceView);
 
-        if(m_SurfaceView != null)
-        {
-            m_SurfaceView.setOnTouchListener(this);
-            m_Surface = m_SurfaceView.getHolder().getSurface();
-        }
+        m_SurfaceView.setOnTouchListener(this);
+        m_Surface = m_SurfaceView.getHolder().getSurface();
 
         m_DrawerListener = new SurfaceDrawerListener(m_DrawerLayout);
 
@@ -227,14 +253,14 @@ public class MainCarActivity extends CarActivity
         UpdateTouchTransformations(true);
         LoadSharedPreferences();
 
-        RequestProjectionPermission();
-
         m_HasRoot = Shell.SU.available();
         if (m_HasRoot)
         {
-            m_InputKeyEvent.init();
             m_MinitouchTask.execute();
+            m_Shell = new Shell.Builder().useSU().setMinimalLogging(true).open();
         }
+
+        RequestProjectionPermission();
     }
 
     @Override
@@ -291,7 +317,6 @@ public class MainCarActivity extends CarActivity
     {
         Log.d(TAG, "onStop");
         super.onStop();
-        stopScreenCapture();
         CarApplication.DisableOrientationListener();
         if (m_WakeLock != null && m_WakeLock.isHeld())
             m_WakeLock.release(ON_AFTER_RELEASE);
@@ -328,7 +353,10 @@ public class MainCarActivity extends CarActivity
         super.onWindowFocusChanged(focus, b1);
 
         if (focus)
+        {
             startScreenCapture();
+            SetScreenSize();
+        }
     }
 
     @Override
@@ -372,13 +400,15 @@ public class MainCarActivity extends CarActivity
         Log.d(TAG, "OnUnlock");
         startOrientationService(OrientationService.METHOD_FORCE, OrientationService.ROTATION_270);
         startBrightnessService(BrightnessService.SCREEN_BRIGHTNESS_MODE_MANUAL, 0);
-        if (m_SurfaceView != null) m_SurfaceView.setKeepScreenOn(false);
+        m_SurfaceView.setKeepScreenOn(false);
+        SetScreenSize();
     }
 
     private void OnScreenOn()
     {
         Log.d(TAG, "OnScreenOn");
-        if (m_SurfaceView != null) m_SurfaceView.setKeepScreenOn(true);
+        m_SurfaceView.setKeepScreenOn(true);
+        startScreenCapture();
         if (!IsLocked())
             OnUnlock();
     }
@@ -388,7 +418,9 @@ public class MainCarActivity extends CarActivity
         Log.d(TAG, "OnScreenOff");
         startOrientationService(OrientationService.METHOD_NONE, OrientationService.ROTATION_0);
         stopService(new Intent(this, BrightnessService.class));
-        if (m_SurfaceView != null) m_SurfaceView.setKeepScreenOn(false);
+        m_SurfaceView.setKeepScreenOn(false);
+        ResetScreenSize();
+        stopScreenCapture();
     }
 
     private boolean IsLocked()
@@ -656,8 +688,34 @@ public class MainCarActivity extends CarActivity
     {
         Log.d(TAG, "GenerateKeyEvent");
 
-        if (m_InputKeyEvent != null)
-            m_InputKeyEvent.generate(keyCode, longPress);
+        if (m_HasRoot && m_ShellExecutor != null)
+        {
+            if (longPress)
+                new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "input keyevent --longpress " + keyCode);
+            else
+                new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "input keyevent " + keyCode);
+        }
+    }
+
+    private void SetScreenSize()
+    {
+        int c_width = m_SurfaceView.getWidth();
+        int c_height = m_SurfaceView.getHeight();
+        if (!IsLocked() && c_width > 0 && c_height > 0)
+        {
+            SetScreenSize(2 * c_height, 2 * c_width);
+        }
+    }
+    private void SetScreenSize(int width, int height)
+    {
+        if (m_HasRoot && m_ShellExecutor != null)
+            new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "wm size " + width + "x" + height);
+    }
+
+    private void ResetScreenSize()
+    {
+        if (m_HasRoot && m_ShellExecutor != null)
+            new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "wm size reset");
     }
 
     private void startScreenCapture()
@@ -738,6 +796,11 @@ public class MainCarActivity extends CarActivity
 
         m_ProjectionOffsetX = (SurfaceWidth - m_ProjectionWidth) / 2.0;
         m_ProjectionOffsetY = (SurfaceHeight - m_ProjectionHeight) / 2.0;
+
+        if (m_ScreenRotation == ROTATION_0 || m_ScreenRotation == ROTATION_180)
+            m_MinitouchSocket.UpdateTouchTransformations(m_ScreenWidth, m_ScreenHeight);
+        else
+            m_MinitouchSocket.UpdateTouchTransformations(m_ScreenHeight, m_ScreenWidth);
     }
 
     @Override
@@ -746,9 +809,14 @@ public class MainCarActivity extends CarActivity
         if (m_MinitouchSocket != null && event != null)
         {
             if (!m_MinitouchSocket.isConnected())
+            {
                 m_MinitouchSocket.connect();
-
-            UpdateTouchTransformations(false);
+                UpdateTouchTransformations(true);
+            }
+            else
+            {
+                UpdateTouchTransformations(false);
+            }
 
             boolean ok = m_MinitouchSocket.isConnected();
             int action = event.getActionMasked();
@@ -798,6 +866,7 @@ public class MainCarActivity extends CarActivity
                         ok = ok && m_MinitouchSocket.TouchMove(id, rx, ry, pressure);
                         break;
                     case ACTION_UP:
+                    case ACTION_CANCEL:
                         ok = ok && m_MinitouchSocket.TouchUpAll();
                         break;
                     case ACTION_POINTER_UP:

@@ -10,20 +10,21 @@
     <SurfaceView
         android:id="@+id/m_SurfaceView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:focusable="true" />
 
     <include
         android:id="@+id/m_TaskBarDrawer"
         layout="@layout/activity_car_taskbar"
         android:layout_width="80dp"
         android:layout_height="match_parent"
-        android:layout_gravity="start"/>
+        android:layout_gravity="start" />
 
     <include
         android:id="@+id/m_AppsDrawer"
         layout="@layout/activity_car_apps"
         android:layout_width="400dp"
         android:layout_height="match_parent"
-        android:layout_gravity="end"/>
+        android:layout_gravity="end" />
 
 </android.support.v4.widget.DrawerLayout>

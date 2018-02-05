@@ -22,6 +22,11 @@ public class MinitouchSocket
     private double   MaxPressure;
     private int      Pid;
 
+    private double   m_ProjectionOffsetX;
+    private double   m_ProjectionOffsetY;
+    private double   m_ProjectionWidth;
+    private double   m_ProjectionHeight;
+
     boolean connect()
     {
         Log.d(TAG, "connect");
@@ -149,25 +154,43 @@ public class MinitouchSocket
 
     private boolean ValidateBounds(double x, double y)
     {
-        return (x >= 0.0 && x <= 1.0 && y >= 0.0 && y <= 1.0);
+        return (x >= 0.0 && x < MaxX && y >= 0.0 && y < MaxY);
+    }
+
+    void  UpdateTouchTransformations(double screenWidth, double screenHeight)
+    {
+        double factX = MaxX / screenWidth;
+        double factY = MaxY / screenHeight;
+
+        double fact = (factX < factY ? factX : factY);
+
+        m_ProjectionWidth = fact * screenWidth;
+        m_ProjectionHeight = fact * screenHeight;
+
+        m_ProjectionOffsetX = (MaxX - m_ProjectionWidth) / 2.0;
+        m_ProjectionOffsetY = (MaxY - m_ProjectionHeight) / 2.0;
     }
 
     boolean TouchDown(int id, double x, double y, double pressure)
     {
+        x = m_ProjectionOffsetX + x * m_ProjectionWidth;
+        y = m_ProjectionOffsetY + y * m_ProjectionHeight;
+
         if (!ValidateBounds(x, y))
             return true;
-        x = x * MaxX;
-        y = y * MaxY;
+
         pressure = pressure * MaxPressure;
         return OutputWrite(String.format("d %d %d %d %d\n", id, (int)x, (int)y, (int)pressure));
     }
 
     boolean TouchMove(int id, double x, double y, double pressure)
     {
+        x = m_ProjectionOffsetX + x * m_ProjectionWidth;
+        y = m_ProjectionOffsetY + y * m_ProjectionHeight;
+
         if (!ValidateBounds(x, y))
             return true;
-        x = x * MaxX;
-        y = y * MaxY;
+
         pressure = pressure * MaxPressure;
         return OutputWrite(String.format("m %d %d %d %d\n", id, (int)x, (int)y, (int)pressure));
     }
