@@ -8,9 +8,10 @@ Requirements:
 - whitelist app in power manager and autostart manager (required to launch activities from service)
 
 Features:
-- full screen mirror with multitouch and hardware key support (rooted)
+- full screen mirror
+- multitouch and hardware key support (root)
 - brightness and orienteation control
-- phone screen resize to fit AA screen (coming soon)
+- phone screen resize to fit AA screen (root)
 - drawer bar for back, menu and favourites (slide from left side)
 - launcher drawer to launch application (slide from right side)
 - touch and hold favourite to change.
