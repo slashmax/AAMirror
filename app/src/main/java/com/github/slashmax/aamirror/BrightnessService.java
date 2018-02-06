@@ -2,6 +2,7 @@ package com.github.slashmax.aamirror;
 
 import android.app.Service;
 import android.content.Intent;
+import android.os.Build;
 import android.os.IBinder;
 import android.provider.Settings;
 import android.support.annotation.Nullable;
@@ -77,7 +78,8 @@ public class BrightnessService extends Service
     private boolean CanWriteSettings()
     {
         Log.d(TAG, "CanWriteSettings");
-        return Settings.System.canWrite(this);
+        return Build.VERSION.SDK_INT < 23 ||
+                Settings.System.canWrite(this);
     }
 
     private void ReadBrightnessSettings()
@@ -99,6 +101,8 @@ public class BrightnessService extends Service
         Log.d(TAG, "WriteBrightnessSettings");
         if (CanWriteSettings())
         {
+            if (brightness < 0) brightness = 0;
+            else if (brightness > 255) brightness = 255;
             Settings.System.putInt(getContentResolver(), SCREEN_BRIGHTNESS, brightness);
             Settings.System.putInt(getContentResolver(), SCREEN_BRIGHTNESS_MODE, brightnessMode);
         }

@@ -139,7 +139,8 @@ public class OrientationService extends Service
     private boolean CanWriteSettings()
     {
         Log.d(TAG, "CanWriteSettings");
-        return Settings.System.canWrite(this);
+        return Build.VERSION.SDK_INT < 23 ||
+                Settings.System.canWrite(this);
     }
 
     private void ReadRotationSettings()
@@ -170,7 +171,8 @@ public class OrientationService extends Service
     private boolean CanCreateOverlay()
     {
         Log.d(TAG, "CanCreateOverlay");
-        return Settings.canDrawOverlays(this);
+        return Build.VERSION.SDK_INT < 23 ||
+                Settings.canDrawOverlays(this);
     }
 
     private boolean CreateOverlay(int orientation)

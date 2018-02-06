@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<preference-headers xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <header
+        android:fragment="com.github.slashmax.aamirror.SettingsActivity$ScreenPreferenceFragment"
+        android:icon="@drawable/ic_settings_brightness_black"
+        android:title="@string/pref_screen_settings" />
+
+    <header
+        android:fragment="com.github.slashmax.aamirror.SettingsActivity$NavigationPreferenceFragment"
+        android:icon="@drawable/ic_view_array_black"
+        android:title="@string/pref_navigation_settings" />
+
+    <header
+        android:fragment="com.github.slashmax.aamirror.SettingsActivity$FavouritesPreferenceFragment"
+        android:icon="@drawable/ic_star_black"
+        android:title="@string/pref_fav_settings" />
+
+</preference-headers>

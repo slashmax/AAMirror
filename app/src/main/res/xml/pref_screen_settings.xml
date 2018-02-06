@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory android:title="Brightness">
+
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="overwrite_brightness"
+            android:title="Overwrite screen brightness" />
+        <EditTextPreference
+            android:defaultValue="0"
+            android:dependency="overwrite_brightness"
+            android:inputType="number"
+            android:key="overwrite_brightness_value"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Screen brightness value (0-255)" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Rotation">
+
+        <ListPreference
+            android:defaultValue="0"
+            android:entries="@array/pref_orientation_list_titles"
+            android:entryValues="@array/pref_orientation_list_values"
+            android:key="orientation_method"
+            android:title="Screen rotation" />
+        <ListPreference
+            android:defaultValue="0"
+            android:entries="@array/pref_rotation_list_titles"
+            android:entryValues="@array/pref_rotation_list_values"
+            android:key="orientation_rotation"
+            android:title="Rotation degree" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Size">
+
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="resize_screen"
+            android:title="Resize screen (landscape)" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

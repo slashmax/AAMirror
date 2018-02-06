@@ -1,6 +1,32 @@
 <resources>
     <string name="app_name">AA Mirror</string>
-    <string name="launch_activity">Launch app</string>
-    <string name="set_favourite_activity">Set as favourite app</string>
-    <string name="title_activity_settings">Settings</string>
+
+    <string name="pref_screen_settings">Screen settings</string>
+    <string name="pref_navigation_settings">Sidebar settings</string>
+    <string name="pref_fav_settings">Favourite apps</string>
+
+    <string-array name="pref_orientation_list_titles">
+        <item>None</item>
+        <item>Suggest</item>
+        <item>Force</item>
+    </string-array>
+    <string-array name="pref_orientation_list_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+
+    <string-array name="pref_rotation_list_titles">
+        <item>0 degree</item>
+        <item>90 degree</item>
+        <item>180 degree</item>
+        <item>270 degree</item>
+    </string-array>
+    <string-array name="pref_rotation_list_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+
 </resources>

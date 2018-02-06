@@ -15,11 +15,14 @@ import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
+import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.support.annotation.Nullable;
 import android.support.v4.widget.DrawerLayout;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -63,7 +66,6 @@ public class MainCarActivity extends CarActivity
         AppsGridFragment.OnAppClickListener, AppsGridFragment.OnAppLongClickListener
 {
     private static final String     TAG = "MainCarActivity";
-    private static final String     PREFERENCES = "com.github.slashmax.aamirror.preferences";
 
     private static final int        REQUEST_MEDIA_PROJECTION_PERMISSION = 1;
 
@@ -271,8 +273,8 @@ public class MainCarActivity extends CarActivity
         m_DrawerListener.onDestroy();
         ResetScreenSize();
         stopScreenCapture();
-        stopService(new Intent(this, OrientationService.class));
-        stopService(new Intent(this, BrightnessService.class));
+        stopOrientationService();
+        stopBrightnessService();
         m_MinitouchSocket.disconnect();
         if (m_HasRoot)
         {
@@ -399,10 +401,13 @@ public class MainCarActivity extends CarActivity
     private void OnUnlock()
     {
         Log.d(TAG, "OnUnlock");
-        startOrientationService(OrientationService.METHOD_FORCE, OrientationService.ROTATION_270);
-        startBrightnessService(BrightnessService.SCREEN_BRIGHTNESS_MODE_MANUAL, 0);
+        startOrientationService();
+        startBrightnessService();
         m_SurfaceView.setKeepScreenOn(false);
         SetScreenSize();
+
+        if (getDefaultSharedPreferences("open_left_drawer_on_start", false))
+            m_DrawerLayout.openDrawer(m_TaskBarDrawer);
     }
 
     private void OnScreenOn()
@@ -417,8 +422,8 @@ public class MainCarActivity extends CarActivity
     private  void OnScreenOff()
     {
         Log.d(TAG, "OnScreenOff");
-        startOrientationService(OrientationService.METHOD_NONE, OrientationService.ROTATION_0);
-        stopService(new Intent(this, BrightnessService.class));
+        stopOrientationService();
+        stopBrightnessService();
         m_SurfaceView.setKeepScreenOn(false);
         ResetScreenSize();
         stopScreenCapture();
@@ -427,22 +432,43 @@ public class MainCarActivity extends CarActivity
     private boolean IsLocked()
     {
         Log.d(TAG, "IsLocked");
+        if (Build.VERSION.SDK_INT < 22)
+            return false;
+
         KeyguardManager km = (KeyguardManager)getSystemService(KEYGUARD_SERVICE);
         return (km != null && km.isDeviceLocked());
     }
 
-    private void startOrientationService(int method, int rotation)
+    private void startOrientationService()
     {
+        int method = getDefaultSharedPreferences("orientation_method", 0);
+        int rotation = getDefaultSharedPreferences("orientation_rotation", 0);
+
         startService(new Intent(this, OrientationService.class)
                 .putExtra(OrientationService.METHOD, method)
                 .putExtra(OrientationService.ROTATION, rotation));
     }
 
-    private void startBrightnessService(int brightness, int brightnessMode)
+    private void stopOrientationService()
     {
-        startService(new Intent(this, BrightnessService.class)
-                .putExtra(BrightnessService.BRIGHTNESS, brightness)
-                .putExtra(BrightnessService.BRIGHTNESS_MODE, brightnessMode));
+        stopService(new Intent(this, OrientationService.class));
+    }
+
+    private void startBrightnessService()
+    {
+        boolean do_it = getDefaultSharedPreferences("overwrite_brightness", false);
+        if (do_it)
+        {
+            int brightness = getDefaultSharedPreferences("overwrite_brightness_value", 0);
+            startService(new Intent(this, BrightnessService.class)
+                    .putExtra(BrightnessService.BRIGHTNESS, brightness)
+                    .putExtra(BrightnessService.BRIGHTNESS_MODE, BrightnessService.SCREEN_BRIGHTNESS_MODE_MANUAL));
+        }
+    }
+
+    private void stopBrightnessService()
+    {
+        stopService(new Intent(this, BrightnessService.class));
     }
 
     private void InitButtonsActions()
@@ -700,11 +726,18 @@ public class MainCarActivity extends CarActivity
 
     private void SetScreenSize()
     {
-        int c_width = m_SurfaceView.getWidth();
-        int c_height = m_SurfaceView.getHeight();
-        if (!IsLocked() && c_width > 0 && c_height > 0)
+        boolean do_it = getDefaultSharedPreferences("resize_screen", false);
+
+        double c_width = m_SurfaceView.getWidth();
+        double c_height = m_SurfaceView.getHeight();
+        if (do_it && !IsLocked() && c_width > 0 && c_height > 0)
         {
-            SetScreenSize(2 * c_height, 2 * c_width);
+            double ratio = c_width / c_height;
+            double s_width = m_ScreenWidth < m_ScreenHeight ? m_ScreenWidth : m_ScreenHeight;
+            if (s_width > 0)
+            {
+                SetScreenSize((int)s_width, (int)(s_width * ratio));
+            }
         }
     }
     private void SetScreenSize(int width, int height)
@@ -927,30 +960,57 @@ public class MainCarActivity extends CarActivity
     private void RequestWriteSettingsPermission()
     {
         Log.d(TAG, "RequestWriteSettingsPermission");
-        if (!Settings.System.canWrite(this))
+        if (Build.VERSION.SDK_INT >= 23 && !Settings.System.canWrite(this))
             startActivity(ACTION_MANAGE_WRITE_SETTINGS);
     }
 
     private void RequestOverlayPermission()
     {
         Log.d(TAG, "RequestOverlayPermission");
-        if (!Settings.canDrawOverlays(this))
+        if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this))
             startActivity(ACTION_MANAGE_OVERLAY_PERMISSION);
+    }
+
+    private String getDefaultSharedPreferences(String key, @Nullable String defValue)
+    {
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        return sharedPref.getString(key, defValue);
+    }
+
+    private int getDefaultSharedPreferences(String key, int defValue)
+    {
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        String result = sharedPref.getString(key, Integer.toString(defValue));
+
+        try
+        {
+            return Integer.parseInt(result);
+        }
+        catch (Exception e)
+        {
+            return  defValue;
+        }
+    }
+
+    private boolean getDefaultSharedPreferences(String key, boolean defValue)
+    {
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        return sharedPref.getBoolean(key, defValue);
     }
 
     private void LoadSharedPreferences()
     {
         Log.d(TAG, "LoadSharedPreferences");
-        SharedPreferences sharedPref = getSharedPreferences(PREFERENCES, MODE_PRIVATE);
-        UpdateFavApp(ACTION_APP_FAV_1, sharedPref.getString("m_AppFav1", null));
-        UpdateFavApp(ACTION_APP_FAV_2, sharedPref.getString("m_AppFav2", null));
-        UpdateFavApp(ACTION_APP_FAV_3, sharedPref.getString("m_AppFav3", null));
+
+        UpdateFavApp(ACTION_APP_FAV_1, getDefaultSharedPreferences("m_AppFav1", null));
+        UpdateFavApp(ACTION_APP_FAV_2, getDefaultSharedPreferences("m_AppFav2", null));
+        UpdateFavApp(ACTION_APP_FAV_3, getDefaultSharedPreferences("m_AppFav3", null));
     }
 
     private void SaveSharedPreferences()
     {
         Log.d(TAG, "SaveSharedPreferences");
-        SharedPreferences sharedPref = getSharedPreferences(PREFERENCES, MODE_PRIVATE);
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         SharedPreferences.Editor editor = sharedPref.edit();
         editor.putString("m_AppFav1", m_AppFav1);
         editor.putString("m_AppFav2", m_AppFav2);
