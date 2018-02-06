@@ -269,6 +269,7 @@ public class MainCarActivity extends CarActivity
         Log.d(TAG, "onDestroy");
         super.onDestroy();
         m_DrawerListener.onDestroy();
+        ResetScreenSize();
         stopScreenCapture();
         stopService(new Intent(this, OrientationService.class));
         stopService(new Intent(this, BrightnessService.class));
