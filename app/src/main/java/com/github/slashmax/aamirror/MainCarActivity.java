@@ -22,6 +22,8 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.support.annotation.ColorInt;
+import android.support.annotation.ColorRes;
 import android.support.annotation.Nullable;
 import android.support.v4.widget.DrawerLayout;
 import android.util.DisplayMetrics;
@@ -382,6 +384,15 @@ public class MainCarActivity extends CarActivity
         controller.getMenuController().hideMenuButton();
     }
 
+    @ColorInt
+    private int getColorCompat(@ColorRes int id)
+    {
+        if (Build.VERSION.SDK_INT >= 23)
+            return getColor(id);
+        else
+            return getResources().getColor(id);
+    }
+
     private void UpdateConfiguration(Configuration configuration)
     {
         if (configuration == null)
@@ -390,9 +401,9 @@ public class MainCarActivity extends CarActivity
         Log.d(TAG, "UpdateConfiguration: " + configuration.toString());
         int backgroundColor;
         if ((configuration.uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES)
-            backgroundColor = getColor(R.color.colorCarBackgroundNight);
+            backgroundColor = getColorCompat(R.color.colorCarBackgroundNight);
         else
-            backgroundColor = getColor(R.color.colorCarBackgroundDay);
+            backgroundColor = getColorCompat(R.color.colorCarBackgroundDay);
 
         if (m_TaskBarDrawer != null)
             m_TaskBarDrawer.setBackgroundColor(backgroundColor);
