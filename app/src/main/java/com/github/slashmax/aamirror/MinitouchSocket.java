@@ -6,13 +6,16 @@ import android.util.Log;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.Socket;
 
 public class MinitouchSocket
 {
     private static final String TAG = "MinitouchSocket";
     private static final String DEFAULT_SOCKET_NAME = "minitouch";
 
-    private LocalSocket     m_Socket;
+    private LocalSocket     m_SocketLocal;
+    private Socket          m_SocketTcp;
     private OutputStream    m_Output;
 
     private int      Version;
@@ -27,11 +30,33 @@ public class MinitouchSocket
     private double   m_ProjectionWidth;
     private double   m_ProjectionHeight;
 
-    boolean connect()
+    boolean connect(boolean local)
     {
         Log.d(TAG, "connect");
+        if (local)
+            return connectLocal();
+        else
+            return connectTcp();
+    }
 
-        disconnect();
+    void disconnect()
+    {
+        Log.d(TAG, "disconnect");
+        disconnectLocal();
+        disconnectTcp();
+    }
+
+    boolean isConnected()
+    {
+        Log.d(TAG, "isConnected");
+        return isConnectedLocal() || isConnectedTcp();
+    }
+
+    private boolean connectLocal()
+    {
+        Log.d(TAG, "connectLocal");
+
+        disconnectLocal();
         LocalSocket socket = new LocalSocket();
         try
         {
@@ -39,7 +64,7 @@ public class MinitouchSocket
             if (inputReadParams(socket.getInputStream()))
             {
                 m_Output = socket.getOutputStream();
-                m_Socket = socket;
+                m_SocketLocal = socket;
             }
             else
             {
@@ -48,32 +73,83 @@ public class MinitouchSocket
         }
         catch (Exception e)
         {
-            Log.d(TAG, "connect exception: " + e.toString());
+            Log.d(TAG, "connectLocal exception: " + e.toString());
+            m_SocketLocal = null;
         }
-        return isConnected();
+        return isConnectedLocal();
     }
 
-    void disconnect()
+    private void disconnectLocal()
     {
-        Log.d(TAG, "disconnect");
-        if (isConnected())
+        Log.d(TAG, "disconnectLocal");
+        if (isConnectedLocal())
         {
             try
             {
-                m_Socket.close();
+                m_SocketLocal.close();
             }
             catch (Exception e)
             {
-                Log.d(TAG, "disconnect exception: " + e.toString());
+                Log.d(TAG, "disconnectLocal exception: " + e.toString());
             }
             m_Output = null;
-            m_Socket = null;
+            m_SocketLocal = null;
         }
     }
 
-    boolean isConnected()
+    private boolean isConnectedLocal()
     {
-        return (m_Socket != null);
+        return (m_SocketLocal != null);
+    }
+
+    private boolean connectTcp()
+    {
+        Log.d(TAG, "connectTcp");
+
+        disconnectTcp();
+        try
+        {
+            InetAddress serverAddress = InetAddress.getByName("127.0.0.1");
+            Socket socket = new Socket(serverAddress, 1111);
+            if (inputReadParams(socket.getInputStream()))
+            {
+                m_Output = socket.getOutputStream();
+                m_SocketTcp = socket;
+            }
+            else
+            {
+                socket.close();
+            }
+        }
+        catch (Exception e)
+        {
+            Log.d(TAG, "connectTcp exception: " + e.toString());
+            m_SocketTcp = null;
+        }
+        return isConnectedTcp();
+    }
+
+    private void disconnectTcp()
+    {
+        Log.d(TAG, "disconnectTcp");
+        if (isConnectedTcp())
+        {
+            try
+            {
+                m_SocketTcp.close();
+            }
+            catch (Exception e)
+            {
+                Log.d(TAG, "disconnectTcp exception: " + e.toString());
+            }
+            m_Output = null;
+            m_SocketTcp = null;
+        }
+    }
+
+    private boolean isConnectedTcp()
+    {
+        return (m_SocketTcp != null);
     }
 
     int getPid()

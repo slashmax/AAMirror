@@ -121,7 +121,7 @@ public class MainCarActivity extends CarActivity
         protected Void doInBackground(Void... voids)
         {
             Log.d(TAG, "MinitouchTask.doInBackground");
-            m_MinitouchDaemon.run();
+            m_MinitouchDaemon.start();
             return null;
         }
     }
@@ -261,7 +261,7 @@ public class MainCarActivity extends CarActivity
         if (m_HasRoot)
         {
             m_MinitouchTask.execute();
-            m_Shell = new Shell.Builder().useSU().setMinimalLogging(true).open();
+            m_Shell = new Shell.Builder().useSU().open();
         }
 
         RequestProjectionPermission();
@@ -280,9 +280,11 @@ public class MainCarActivity extends CarActivity
         m_MinitouchSocket.disconnect();
         if (m_HasRoot)
         {
-            m_MinitouchDaemon.kill(m_MinitouchSocket.getPid());
+            m_MinitouchDaemon.stop(m_MinitouchSocket.getPid());
             m_MinitouchTask.cancel(true);
         }
+        if (m_Shell != null)
+            m_Shell.close();
     }
 
     @Override
@@ -726,13 +728,10 @@ public class MainCarActivity extends CarActivity
     {
         Log.d(TAG, "GenerateKeyEvent");
 
-        if (m_HasRoot && m_ShellExecutor != null)
-        {
-            if (longPress)
-                new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "input keyevent --longpress " + keyCode);
-            else
-                new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "input keyevent " + keyCode);
-        }
+        if (longPress)
+            new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "input keyevent --longpress " + keyCode);
+        else
+            new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "input keyevent " + keyCode);
     }
 
     private void SetScreenSize()
@@ -753,14 +752,12 @@ public class MainCarActivity extends CarActivity
     }
     private void SetScreenSize(int width, int height)
     {
-        if (m_HasRoot && m_ShellExecutor != null)
-            new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "wm size " + width + "x" + height);
+        new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "wm size " + width + "x" + height);
     }
 
     private void ResetScreenSize()
     {
-        if (m_HasRoot && m_ShellExecutor != null)
-            new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "wm size reset");
+        new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "wm size reset");
     }
 
     private void startScreenCapture()
@@ -855,7 +852,7 @@ public class MainCarActivity extends CarActivity
         {
             if (!m_MinitouchSocket.isConnected())
             {
-                m_MinitouchSocket.connect();
+                m_MinitouchSocket.connect(true);
                 UpdateTouchTransformations(true);
             }
             else

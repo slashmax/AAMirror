@@ -21,21 +21,21 @@ class MinitouchDaemon
         m_Context = context;
     }
 
-    void run()
+    void start()
     {
-        Log.d(TAG, "run");
+        Log.d(TAG, "start");
 
-        String mt = install();
-        if (mt == null || mt.isEmpty())
+        String path = install();
+        if (path == null || path.isEmpty())
             return;
 
-        LogShell(Shell.SU.run("chmod 755 " + mt));
-        LogShell(Shell.SU.run(mt));
+        LogShell(Shell.SU.run("chmod 755 " + path));
+        LogShell(Shell.SU.run(path));
     }
 
-    void kill(int pid)
+    void stop(int pid)
     {
-        Log.d(TAG, "kill: " + pid);
+        Log.d(TAG, "stop: " + pid);
         if (pid != 0)
             LogShell(Shell.SU.run("kill " + pid));
     }
@@ -82,18 +82,6 @@ class MinitouchDaemon
             return result.get(0);
 
         return "armeabi";
-    }
-
-    private int detectSdk()
-    {
-        Log.d(TAG, "detectSdk");
-        List<String> result = Shell.SH.run("getprop ro.build.version.sdk");
-        LogShell(result);
-
-        if (result != null && !result.isEmpty())
-            return Integer.parseInt(result.get(0));
-
-        return 0;
     }
 
     private void LogShell(List<String> list)
