@@ -417,9 +417,9 @@ public class MainCarActivity extends CarActivity
     private void OnUnlock()
     {
         Log.d(TAG, "OnUnlock");
-        startOrientationService();
-        startBrightnessService();
         m_SurfaceView.setKeepScreenOn(false);
+        startBrightnessService();
+        startOrientationService();
         SetScreenSize();
 
         if (getDefaultSharedPreferences("open_left_drawer_on_start", false))
@@ -438,9 +438,10 @@ public class MainCarActivity extends CarActivity
     private  void OnScreenOff()
     {
         Log.d(TAG, "OnScreenOff");
-        stopOrientationService();
-        stopBrightnessService();
         m_SurfaceView.setKeepScreenOn(false);
+        stopBrightnessService();
+        if (getDefaultSharedPreferences("reset_screen_rotation_on_stop", true))
+            stopOrientationService();
         if (getDefaultSharedPreferences("reset_screen_size_on_stop", true))
             ResetScreenSize();
         stopScreenCapture();

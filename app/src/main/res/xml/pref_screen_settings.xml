@@ -31,6 +31,10 @@
             android:entryValues="@array/pref_rotation_list_values"
             android:key="orientation_rotation"
             android:title="Rotation degree" />
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="reset_screen_rotation_on_stop"
+            android:title="Restore rotation on focus lost" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="Screen size (root)">
