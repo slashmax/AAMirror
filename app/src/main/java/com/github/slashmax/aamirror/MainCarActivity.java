@@ -64,7 +64,8 @@ import static android.view.Surface.ROTATION_270;
 import static android.view.Surface.ROTATION_90;
 
 public class MainCarActivity extends CarActivity
-        implements View.OnTouchListener, Handler.Callback,
+        implements Handler.Callback,
+        View.OnTouchListener,
         AppsGridFragment.OnAppClickListener, AppsGridFragment.OnAppLongClickListener
 {
     private static final String     TAG = "MainCarActivity";
@@ -82,6 +83,7 @@ public class MainCarActivity extends CarActivity
 
     private int                     m_AppsAction;
 
+    private boolean                 m_ScreenResized;
     private boolean                 m_HasRoot;
     private MinitouchDaemon         m_MinitouchDaemon;
     private MinitouchSocket         m_MinitouchSocket;
@@ -257,6 +259,7 @@ public class MainCarActivity extends CarActivity
         UpdateTouchTransformations(true);
         LoadSharedPreferences();
 
+        m_ScreenResized = false;
         m_HasRoot = Shell.SU.available();
         if (m_HasRoot)
         {
@@ -438,7 +441,8 @@ public class MainCarActivity extends CarActivity
         stopOrientationService();
         stopBrightnessService();
         m_SurfaceView.setKeepScreenOn(false);
-        ResetScreenSize();
+        if (getDefaultSharedPreferences("reset_screen_size_on_stop", true))
+            ResetScreenSize();
         stopScreenCapture();
     }
 
@@ -736,7 +740,7 @@ public class MainCarActivity extends CarActivity
 
     private void SetScreenSize()
     {
-        boolean do_it = getDefaultSharedPreferences("resize_screen", false);
+        boolean do_it = getDefaultSharedPreferences("set_screen_size_on_start", false);
 
         double c_width = m_SurfaceView.getWidth();
         double c_height = m_SurfaceView.getHeight();
@@ -752,11 +756,16 @@ public class MainCarActivity extends CarActivity
     }
     private void SetScreenSize(int width, int height)
     {
-        new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "wm size " + width + "x" + height);
+        if (!m_ScreenResized)
+        {
+            m_ScreenResized = true;
+            new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "wm size " + width + "x" + height);
+        }
     }
 
     private void ResetScreenSize()
     {
+        m_ScreenResized = false;
         new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "wm size reset");
     }
 

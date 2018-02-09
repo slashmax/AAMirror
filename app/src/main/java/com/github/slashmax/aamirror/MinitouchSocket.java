@@ -48,7 +48,6 @@ public class MinitouchSocket
 
     boolean isConnected()
     {
-        Log.d(TAG, "isConnected");
         return isConnectedLocal() || isConnectedTcp();
     }
 
