@@ -65,57 +65,58 @@ import static android.view.Surface.ROTATION_90;
 
 public class MainCarActivity extends CarActivity
         implements Handler.Callback,
-        View.OnTouchListener,
+        View.OnTouchListener, TwoFingerGestureDetector.OnTwoFingerGestureListener,
         AppsGridFragment.OnAppClickListener, AppsGridFragment.OnAppLongClickListener
 {
-    private static final String     TAG = "MainCarActivity";
+    private static final String         TAG = "MainCarActivity";
 
-    private static final int        REQUEST_MEDIA_PROJECTION_PERMISSION = 1;
+    private static final int            REQUEST_MEDIA_PROJECTION_PERMISSION = 1;
 
-    private static final int        ACTION_APP_LAUNCH   = 0;
-    private static final int        ACTION_APP_FAV_1    = 1;
-    private static final int        ACTION_APP_FAV_2    = 2;
-    private static final int        ACTION_APP_FAV_3    = 3;
+    private static final int            ACTION_APP_LAUNCH   = 0;
+    private static final int            ACTION_APP_FAV_1    = 1;
+    private static final int            ACTION_APP_FAV_2    = 2;
+    private static final int            ACTION_APP_FAV_3    = 3;
 
-    private String                  m_AppFav1;
-    private String                  m_AppFav2;
-    private String                  m_AppFav3;
+    private String                      m_AppFav1;
+    private String                      m_AppFav2;
+    private String                      m_AppFav3;
 
-    private int                     m_AppsAction;
+    private int                         m_AppsAction;
 
-    private boolean                 m_ScreenResized;
-    private boolean                 m_HasRoot;
-    private MinitouchDaemon         m_MinitouchDaemon;
-    private MinitouchSocket         m_MinitouchSocket;
-    private MinitouchAsyncTask      m_MinitouchTask;
+    private boolean                     m_ScreenResized;
+    private boolean                     m_HasRoot;
+    private MinitouchDaemon             m_MinitouchDaemon;
+    private MinitouchSocket             m_MinitouchSocket;
+    private MinitouchAsyncTask          m_MinitouchTask;
 
     private ShellDirectExecutor         m_ShellExecutor;
     private static Shell.Interactive    m_Shell;
 
-    private UnlockReceiver          m_UnlockReceiver;
-    private Handler                 m_RequestHandler;
-    private PowerManager.WakeLock   m_WakeLock;
+    private UnlockReceiver              m_UnlockReceiver;
+    private Handler                     m_RequestHandler;
+    private PowerManager.WakeLock       m_WakeLock;
 
-    private DrawerLayout            m_DrawerLayout;
-    private LinearLayout            m_TaskBarDrawer;
-    private LinearLayout            m_AppsDrawer;
-    private SurfaceView             m_SurfaceView;
-    private Surface                 m_Surface;
+    private DrawerLayout                m_DrawerLayout;
+    private LinearLayout                m_TaskBarDrawer;
+    private LinearLayout                m_AppsDrawer;
+    private SurfaceView                 m_SurfaceView;
+    private Surface                     m_Surface;
 
-    private SurfaceDrawerListener   m_DrawerListener;
+    private SurfaceDrawerListener       m_DrawerListener;
+    private TwoFingerGestureDetector    m_TwoFingerDetector;
 
-    private VirtualDisplay          m_VirtualDisplay;
-    private MediaProjection         m_MediaProjection;
-    private int                     m_ProjectionCode;
-    private Intent                  m_ProjectionIntent;
+    private VirtualDisplay              m_VirtualDisplay;
+    private MediaProjection             m_MediaProjection;
+    private int                         m_ProjectionCode;
+    private Intent                      m_ProjectionIntent;
 
-    private int                     m_ScreenRotation;
-    private int                     m_ScreenWidth;
-    private int                     m_ScreenHeight;
-    private double                  m_ProjectionOffsetX;
-    private double                  m_ProjectionOffsetY;
-    private double                  m_ProjectionWidth;
-    private double                  m_ProjectionHeight;
+    private int                         m_ScreenRotation;
+    private int                         m_ScreenWidth;
+    private int                         m_ScreenHeight;
+    private double                      m_ProjectionOffsetX;
+    private double                      m_ProjectionOffsetY;
+    private double                      m_ProjectionWidth;
+    private double                      m_ProjectionHeight;
 
     private class MinitouchAsyncTask extends AsyncTask<Void, Void, Void>
     {
@@ -187,7 +188,6 @@ public class MainCarActivity extends CarActivity
         @Override
         public void onDrawerSlide(View drawerView, float slideOffset)
         {
-            Log.d(TAG, "onDrawerSlide");
             super.onDrawerSlide(drawerView, slideOffset);
             if (m_Drawer != null)
                 m_Drawer.bringChildToFront(drawerView);
@@ -210,6 +210,14 @@ public class MainCarActivity extends CarActivity
             if (drawerView == m_AppsDrawer)
                 m_AppsAction = ACTION_APP_LAUNCH;
         }
+    }
+
+    @Override
+    public void onTwoFingerTapUp()
+    {
+        Log.d(TAG, "onTwoFingerTapUp");
+        if (getDefaultSharedPreferences("open_left_drawer_on_two_finger_tap", true))
+            m_DrawerLayout.openDrawer(m_TaskBarDrawer);
     }
 
     @Override
@@ -246,6 +254,7 @@ public class MainCarActivity extends CarActivity
         m_Surface = m_SurfaceView.getHolder().getSurface();
 
         m_DrawerListener = new SurfaceDrawerListener(m_DrawerLayout);
+        m_TwoFingerDetector = new TwoFingerGestureDetector(this, this);
 
         AppsGridFragment gridFragment = (AppsGridFragment)getSupportFragmentManager().findFragmentById(R.id.m_AppsGridFragment);
         if (gridFragment != null)
@@ -550,7 +559,10 @@ public class MainCarActivity extends CarActivity
                 public void onClick(View v)
                 {
                     Log.d(TAG, "m_Apps.onClick");
-                    OpenAppsDrawer(ACTION_APP_LAUNCH);
+                    if  (m_DrawerLayout.isDrawerOpen(m_AppsDrawer))
+                        m_DrawerLayout.closeDrawer(m_AppsDrawer);
+                    else
+                        OpenAppsDrawer(ACTION_APP_LAUNCH);
                 }
             });
             m_Apps.setOnLongClickListener(new View.OnLongClickListener()
@@ -930,6 +942,7 @@ public class MainCarActivity extends CarActivity
             if (ok) m_MinitouchSocket.TouchCommit();
         }
 
+        m_TwoFingerDetector.onTouchEvent(event);
         return true;
     }
 
