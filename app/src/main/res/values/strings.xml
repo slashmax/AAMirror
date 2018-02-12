@@ -29,4 +29,17 @@
         <item>3</item>
     </string-array>
 
+    <string-array name="pref_immersive_list_titles">
+        <item>None</item>
+        <item>Hide Status</item>
+        <item>Hide Navigation</item>
+        <item>Full immersive</item>
+    </string-array>
+    <string-array name="pref_immersive_list_values">
+        <item>null*</item>
+        <item>immersive.status=*</item>
+        <item>immersive.navigation=*</item>
+        <item>immersive.full=*</item>
+    </string-array>
+
 </resources>

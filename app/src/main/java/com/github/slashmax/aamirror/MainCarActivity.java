@@ -285,10 +285,11 @@ public class MainCarActivity extends CarActivity
         Log.d(TAG, "onDestroy");
         super.onDestroy();
         m_DrawerListener.onDestroy();
-        ResetScreenSize();
-        stopScreenCapture();
-        stopOrientationService();
         stopBrightnessService();
+        stopOrientationService();
+        ResetScreenSize();
+        ResetImmersiveMode();
+        stopScreenCapture();
         m_MinitouchSocket.disconnect();
         if (m_HasRoot)
         {
@@ -430,7 +431,7 @@ public class MainCarActivity extends CarActivity
         startBrightnessService();
         startOrientationService();
         SetScreenSize();
-
+        SetImmersiveMode();
         if (getDefaultSharedPreferences("open_left_drawer_on_start", false))
             m_DrawerLayout.openDrawer(m_TaskBarDrawer);
     }
@@ -453,6 +454,7 @@ public class MainCarActivity extends CarActivity
             stopOrientationService();
         if (getDefaultSharedPreferences("reset_screen_size_on_stop", true))
             ResetScreenSize();
+        ResetImmersiveMode();
         stopScreenCapture();
     }
 
@@ -780,6 +782,18 @@ public class MainCarActivity extends CarActivity
     {
         m_ScreenResized = false;
         new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "wm size reset");
+    }
+
+    private void SetImmersiveMode()
+    {
+        String immersiveMode = getDefaultSharedPreferences("immersive_mode", "");
+        if (immersiveMode.contains("immersive"))
+            new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "settings put global policy_control " + immersiveMode);
+    }
+
+    private void ResetImmersiveMode()
+    {
+        new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "settings put global policy_control none*");
     }
 
     private void startScreenCapture()

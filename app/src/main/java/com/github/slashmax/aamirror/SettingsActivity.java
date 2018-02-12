@@ -52,6 +52,7 @@ public class SettingsActivity extends AppCompatPreferenceActivity
 
             bindPreferenceSummaryToValue(findPreference("overwrite_brightness_value"));
             bindPreferenceSummaryToValue(findPreference("orientation_method"));
+            bindPreferenceSummaryToValue(findPreference("immersive_mode"));
             bindPreferenceSummaryToValue(findPreference("orientation_rotation"));
         }
 

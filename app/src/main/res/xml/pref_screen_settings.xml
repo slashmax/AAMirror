@@ -39,6 +39,13 @@
 
     <PreferenceCategory android:title="Screen size (root)">
 
+        <ListPreference
+            android:defaultValue="null*"
+            android:entries="@array/pref_immersive_list_titles"
+            android:entryValues="@array/pref_immersive_list_values"
+            android:key="immersive_mode"
+            android:title="Immersive mode" />
+
         <SwitchPreference
             android:defaultValue="false"
             android:key="set_screen_size_on_start"
