@@ -9,13 +9,15 @@ import android.view.WindowManager;
 import eu.chainfire.libsuperuser.Application;
 
 import static android.view.Surface.ROTATION_0;
+import static android.view.Surface.ROTATION_180;
 
 public class CarApplication extends Application
 {
     private static final String TAG = "CarApplication";
 
-    public static int   ScreenRotation = ROTATION_0;
-    public static Point ScreenSize = new Point();
+    public static int               ScreenRotation = ROTATION_0;
+    public static Point             ScreenSize = new Point();
+    public static Point             DisplaySize = new Point();
 
     private static OrientationEventListener m_OrientationListener;
     private WindowManager                   m_WindowManager;
@@ -26,14 +28,15 @@ public class CarApplication extends Application
         Log.d(TAG, "onCreate");
         super.onCreate();
 
-        m_WindowManager = (WindowManager)getSystemService(WINDOW_SERVICE);
-        UpdateScreenRotation();
+        m_WindowManager = (WindowManager)getApplicationContext().getSystemService(WINDOW_SERVICE);
+        UpdateScreenSizeAndRotation();
+        UpdateDisplaySize();
         m_OrientationListener = new OrientationEventListener(this)
         {
             @Override
             public void onOrientationChanged(int orientation)
             {
-                UpdateScreenRotation();
+                UpdateScreenSizeAndRotation();
             }
         };
     }
@@ -43,7 +46,7 @@ public class CarApplication extends Application
     {
         Log.d(TAG, "onConfigurationChanged: " + (newConfig != null ? newConfig.toString() : "null"));
         super.onConfigurationChanged(newConfig);
-        UpdateScreenRotation();
+        UpdateScreenSizeAndRotation();
     }
 
     public static void EnableOrientationListener()
@@ -60,12 +63,27 @@ public class CarApplication extends Application
             m_OrientationListener.disable();
     }
 
-    private void UpdateScreenRotation()
+    private void UpdateScreenSizeAndRotation()
     {
         if (m_WindowManager != null)
         {
+            m_WindowManager.getDefaultDisplay().getRealSize(ScreenSize);
             ScreenRotation = m_WindowManager.getDefaultDisplay().getRotation();
-            m_WindowManager.getDefaultDisplay().getSize(ScreenSize);
         }
+    }
+
+    private void UpdateDisplaySize()
+    {
+        if (ScreenRotation == ROTATION_0 || ScreenRotation == ROTATION_180)
+        {
+            DisplaySize.x = ScreenSize.x;
+            DisplaySize.y = ScreenSize.y;
+        }
+        else
+        {
+            DisplaySize.x = ScreenSize.y;
+            DisplaySize.y = ScreenSize.x;
+        }
+        Log.d(TAG, "UpdateDisplaySize: " + DisplaySize);
     }
 }

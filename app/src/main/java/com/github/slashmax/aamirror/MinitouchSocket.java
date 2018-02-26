@@ -1,5 +1,6 @@
 package com.github.slashmax.aamirror;
 
+import android.graphics.Point;
 import android.net.LocalSocket;
 import android.net.LocalSocketAddress;
 import android.util.Log;
@@ -29,6 +30,8 @@ public class MinitouchSocket
     private double   m_ProjectionOffsetY;
     private double   m_ProjectionWidth;
     private double   m_ProjectionHeight;
+    private double   m_TouchXScale;
+    private double   m_TouchYScale;
 
     boolean connect(boolean local)
     {
@@ -232,24 +235,29 @@ public class MinitouchSocket
         return (x >= 0.0 && x < MaxX && y >= 0.0 && y < MaxY);
     }
 
-    void  UpdateTouchTransformations(double screenWidth, double screenHeight)
+    void  UpdateTouchTransformations(double screenWidth, double screenHeight, Point displaySize)
     {
-        double factX = MaxX / screenWidth;
-        double factY = MaxY / screenHeight;
+        double displayWidth = displaySize.x;
+        double displayHeight = displaySize.y;
+        double factX = displayWidth / screenWidth;
+        double factY = displayHeight / screenHeight;
 
         double fact = (factX < factY ? factX : factY);
 
         m_ProjectionWidth = fact * screenWidth;
         m_ProjectionHeight = fact * screenHeight;
 
-        m_ProjectionOffsetX = (MaxX - m_ProjectionWidth) / 2.0;
-        m_ProjectionOffsetY = (MaxY - m_ProjectionHeight) / 2.0;
+        m_ProjectionOffsetX = (displayWidth - m_ProjectionWidth) / 2.0;
+        m_ProjectionOffsetY = (displayHeight - m_ProjectionHeight) / 2.0;
+
+        m_TouchXScale = MaxX / displayWidth;
+        m_TouchYScale = MaxY / displayHeight;
     }
 
     boolean TouchDown(int id, double x, double y, double pressure)
     {
-        x = m_ProjectionOffsetX + x * m_ProjectionWidth;
-        y = m_ProjectionOffsetY + y * m_ProjectionHeight;
+        x = (m_ProjectionOffsetX + x * m_ProjectionWidth) * m_TouchXScale;
+        y = (m_ProjectionOffsetY + y * m_ProjectionHeight) * m_TouchYScale;
 
         if (!ValidateBounds(x, y))
             return true;
@@ -260,8 +268,8 @@ public class MinitouchSocket
 
     boolean TouchMove(int id, double x, double y, double pressure)
     {
-        x = m_ProjectionOffsetX + x * m_ProjectionWidth;
-        y = m_ProjectionOffsetY + y * m_ProjectionHeight;
+        x = (m_ProjectionOffsetX + x * m_ProjectionWidth) * m_TouchXScale;
+        y = (m_ProjectionOffsetY + y * m_ProjectionHeight) * m_TouchYScale;
 
         if (!ValidateBounds(x, y))
             return true;

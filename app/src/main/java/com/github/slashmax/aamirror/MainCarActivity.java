@@ -762,7 +762,7 @@ public class MainCarActivity extends CarActivity
         if (do_it && !IsLocked() && c_width > 0 && c_height > 0)
         {
             double ratio = c_width / c_height;
-            double s_width = m_ScreenWidth < m_ScreenHeight ? m_ScreenWidth : m_ScreenHeight;
+            double s_width = CarApplication.DisplaySize.x;
             if (s_width > 0)
             {
                 SetScreenSize((int)s_width, (int)(s_width * ratio));
@@ -773,6 +773,7 @@ public class MainCarActivity extends CarActivity
     {
         if (!m_ScreenResized)
         {
+            Log.d(TAG, "SetScreenSize: " + width + " x " + height);
             m_ScreenResized = true;
             new ShellAsyncTask().executeOnExecutor(m_ShellExecutor, "wm size " + width + "x" + height);
         }
@@ -876,9 +877,9 @@ public class MainCarActivity extends CarActivity
         m_ProjectionOffsetY = (SurfaceHeight - m_ProjectionHeight) / 2.0;
 
         if (m_ScreenRotation == ROTATION_0 || m_ScreenRotation == ROTATION_180)
-            m_MinitouchSocket.UpdateTouchTransformations(m_ScreenWidth, m_ScreenHeight);
+            m_MinitouchSocket.UpdateTouchTransformations(m_ScreenWidth, m_ScreenHeight, CarApplication.DisplaySize);
         else
-            m_MinitouchSocket.UpdateTouchTransformations(m_ScreenHeight, m_ScreenWidth);
+            m_MinitouchSocket.UpdateTouchTransformations(m_ScreenHeight, m_ScreenWidth, CarApplication.DisplaySize);
     }
 
     @Override
