@@ -52,6 +52,8 @@ import static android.os.PowerManager.ON_AFTER_RELEASE;
 import static android.os.PowerManager.SCREEN_DIM_WAKE_LOCK;
 import static android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION;
 import static android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS;
+import static android.support.v4.widget.DrawerLayout.LOCK_MODE_LOCKED_CLOSED;
+import static android.support.v4.widget.DrawerLayout.LOCK_MODE_UNLOCKED;
 import static android.view.MotionEvent.ACTION_CANCEL;
 import static android.view.MotionEvent.ACTION_DOWN;
 import static android.view.MotionEvent.ACTION_MOVE;
@@ -330,6 +332,11 @@ public class MainCarActivity extends CarActivity
         filter.addAction(ACTION_SCREEN_ON);
         filter.addAction(ACTION_SCREEN_OFF);
         registerReceiver(m_UnlockReceiver, filter);
+
+        if (getDefaultSharedPreferences("disable_drawer_swipe", false))
+            m_DrawerLayout.setDrawerLockMode(LOCK_MODE_LOCKED_CLOSED);
+        else
+            m_DrawerLayout.setDrawerLockMode(LOCK_MODE_UNLOCKED);
     }
 
     @Override

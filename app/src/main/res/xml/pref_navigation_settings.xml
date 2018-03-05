@@ -9,4 +9,8 @@
         android:defaultValue="true"
         android:key="open_left_drawer_on_two_finger_tap"
         android:title="Open on two finger tap" />
+    <SwitchPreference
+        android:defaultValue="false"
+        android:key="disable_drawer_swipe"
+        android:title="Disable side swipe" />
 </PreferenceScreen>
