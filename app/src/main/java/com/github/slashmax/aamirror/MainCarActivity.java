@@ -74,12 +74,16 @@ public class MainCarActivity extends CarActivity
 
     private static final int            ACTION_APP_LAUNCH   = 0;
     private static final int            ACTION_APP_FAV_1    = 1;
-    private static final int            ACTION_APP_FAV_2    = 2;
+    private static final int            ACTION_APP_FAV_2    = 2;    
     private static final int            ACTION_APP_FAV_3    = 3;
+    private static final int            ACTION_APP_FAV_4    = 4;
+    private static final int            ACTION_APP_FAV_5    = 5;
 
     private String                      m_AppFav1;
     private String                      m_AppFav2;
     private String                      m_AppFav3;
+    private String                      m_AppFav4;
+    private String                      m_AppFav5;
 
     private int                         m_AppsAction;
 
@@ -650,6 +654,54 @@ public class MainCarActivity extends CarActivity
                 }
             });
         }
+
+        ImageView m_Fav4 = (ImageView)findViewById(R.id.m_Fav4);
+        if (m_Fav4 != null)
+        {
+            m_Fav4.setOnClickListener(new View.OnClickListener()
+            {
+                @Override
+                public void onClick(View v)
+                {
+                    Log.d(TAG, "m_Fav4.onClick");
+                    DoFavClick(ACTION_APP_FAV_4, false);
+                }
+            });
+            m_Fav4.setOnLongClickListener(new View.OnLongClickListener()
+            {
+                @Override
+                public boolean onLongClick(View v)
+                {
+                    Log.d(TAG, "m_Fav4.onLongClick");
+                    DoFavClick(ACTION_APP_FAV_4, true);
+                    return true;
+                }
+            });
+        }
+
+        ImageView m_Fav5 = (ImageView)findViewById(R.id.m_Fav5);
+        if (m_Fav5 != null)
+        {
+            m_Fav5.setOnClickListener(new View.OnClickListener()
+            {
+                @Override
+                public void onClick(View v)
+                {
+                    Log.d(TAG, "m_Fav5.onClick");
+                    DoFavClick(ACTION_APP_FAV_5, false);
+                }
+            });
+            m_Fav5.setOnLongClickListener(new View.OnLongClickListener()
+            {
+                @Override
+                public boolean onLongClick(View v)
+                {
+                    Log.d(TAG, "m_Fav5.onLongClick");
+                    DoFavClick(ACTION_APP_FAV_5, true);
+                    return true;
+                }
+            });
+        }
     }
 
     @Override
@@ -692,6 +744,8 @@ public class MainCarActivity extends CarActivity
             case ACTION_APP_FAV_1: packageName = m_AppFav1;break;
             case ACTION_APP_FAV_2: packageName = m_AppFav2;break;
             case ACTION_APP_FAV_3: packageName = m_AppFav3;break;
+            case ACTION_APP_FAV_4: packageName = m_AppFav4;break;
+            case ACTION_APP_FAV_5: packageName = m_AppFav5;break;
         }
 
         if (longPress || packageName == null || packageName.isEmpty())
@@ -733,6 +787,16 @@ public class MainCarActivity extends CarActivity
                 ImageView favImage3 = (ImageView)findViewById(R.id.m_Fav3);
                 if (favImage3 != null) favImage3.setImageDrawable(icon);
                 break;
+            case ACTION_APP_FAV_4:
+                m_AppFav4 = packageName;
+                ImageView favImage4 = (ImageView)findViewById(R.id.m_Fav4);
+                if (favImage4 != null) favImage4.setImageDrawable(icon);
+                break;
+            case ACTION_APP_FAV_5:
+                m_AppFav5 = packageName;
+                ImageView favImage5 = (ImageView)findViewById(R.id.m_Fav5);
+                if (favImage5 != null) favImage5.setImageDrawable(icon);
+                break;        
         }
     }
 
@@ -1051,6 +1115,8 @@ public class MainCarActivity extends CarActivity
         UpdateFavApp(ACTION_APP_FAV_1, getDefaultSharedPreferences("m_AppFav1", null));
         UpdateFavApp(ACTION_APP_FAV_2, getDefaultSharedPreferences("m_AppFav2", null));
         UpdateFavApp(ACTION_APP_FAV_3, getDefaultSharedPreferences("m_AppFav3", null));
+        UpdateFavApp(ACTION_APP_FAV_4, getDefaultSharedPreferences("m_AppFav4", null));
+        UpdateFavApp(ACTION_APP_FAV_5, getDefaultSharedPreferences("m_AppFav5", null));
     }
 
     private void SaveSharedPreferences()
@@ -1061,6 +1127,8 @@ public class MainCarActivity extends CarActivity
         editor.putString("m_AppFav1", m_AppFav1);
         editor.putString("m_AppFav2", m_AppFav2);
         editor.putString("m_AppFav3", m_AppFav3);
+        editor.putString("m_AppFav4", m_AppFav4);
+        editor.putString("m_AppFav5", m_AppFav5);
         editor.apply();
     }
 }
