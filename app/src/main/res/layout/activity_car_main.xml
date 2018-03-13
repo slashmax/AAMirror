@@ -23,7 +23,7 @@
     <include
         android:id="@+id/m_AppsDrawer"
         layout="@layout/activity_car_apps"
-        android:layout_width="400dp"
+        android:layout_width="720dp"
         android:layout_height="match_parent"
         android:layout_gravity="end" />
 

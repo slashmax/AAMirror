@@ -11,9 +11,9 @@
         android:icon="@drawable/ic_view_array_black"
         android:title="@string/pref_navigation_settings" />
 
-    <header
-        android:fragment="com.github.slashmax.aamirror.SettingsActivity$FavouritesPreferenceFragment"
-        android:icon="@drawable/ic_star_black"
-        android:title="@string/pref_fav_settings" />
+    <!--<header-->
+        <!--android:fragment="com.github.slashmax.aamirror.SettingsActivity$FavouritesPreferenceFragment"-->
+        <!--android:icon="@drawable/ic_star_black"-->
+        <!--android:title="@string/pref_fav_settings" />-->
 
 </preference-headers>

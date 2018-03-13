@@ -270,9 +270,7 @@ public class MainCarActivity extends CarActivity
         }
 
         UpdateConfiguration(getResources().getConfiguration());
-        InitButtonsActions();
         UpdateTouchTransformations(true);
-        LoadSharedPreferences();
 
         m_ScreenResized = false;
         m_HasRoot = Shell.SU.available();
@@ -281,6 +279,9 @@ public class MainCarActivity extends CarActivity
             m_MinitouchTask.execute();
             m_Shell = new Shell.Builder().useSU().open();
         }
+
+        InitButtonsActions();
+        LoadSharedPreferences();
 
         RequestProjectionPermission();
     }
@@ -518,6 +519,8 @@ public class MainCarActivity extends CarActivity
         ImageView m_Back =(ImageView)findViewById(R.id.m_Back);
         if (m_Back != null)
         {
+            if (!m_HasRoot) m_Back.setVisibility(View.GONE);
+
             m_Back.setOnClickListener(new View.OnClickListener()
             {
                 @Override
@@ -542,6 +545,8 @@ public class MainCarActivity extends CarActivity
         ImageView m_Menu = (ImageView)findViewById(R.id.m_Menu);
         if (m_Menu != null)
         {
+            if (!m_HasRoot) m_Menu.setVisibility(View.GONE);
+
             m_Menu.setOnClickListener(new View.OnClickListener()
             {
                 @Override
