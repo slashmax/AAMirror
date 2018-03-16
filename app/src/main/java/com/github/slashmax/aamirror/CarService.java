@@ -15,18 +15,4 @@ public class CarService extends CarActivityService
         Log.d(TAG, "getCarActivity");
         return MainCarActivity.class;
     }
-
-    @Override
-    public void onCreate()
-    {
-        Log.d(TAG, "onCreate");
-        super.onCreate();
-    }
-
-    @Override
-    public void onDestroy()
-    {
-        Log.d(TAG, "onDestroy");
-        super.onDestroy();
-    }
 }
