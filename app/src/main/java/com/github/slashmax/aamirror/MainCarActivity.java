@@ -25,6 +25,9 @@ import android.provider.Settings;
 import android.support.annotation.ColorInt;
 import android.support.annotation.ColorRes;
 import android.support.annotation.Nullable;
+import android.support.car.Car;
+import android.support.car.CarConnectionCallback;
+import android.support.car.media.CarAudioManager;
 import android.support.v4.widget.DrawerLayout;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -47,11 +50,13 @@ import eu.chainfire.libsuperuser.Shell;
 import static android.content.Intent.ACTION_SCREEN_OFF;
 import static android.content.Intent.ACTION_SCREEN_ON;
 import static android.content.Intent.ACTION_USER_PRESENT;
+import static android.media.AudioManager.AUDIOFOCUS_GAIN;
 import static android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP;
 import static android.os.PowerManager.ON_AFTER_RELEASE;
 import static android.os.PowerManager.SCREEN_DIM_WAKE_LOCK;
 import static android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION;
 import static android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS;
+import static android.support.car.media.CarAudioManager.CAR_AUDIO_USAGE_DEFAULT;
 import static android.support.v4.widget.DrawerLayout.LOCK_MODE_LOCKED_CLOSED;
 import static android.support.v4.widget.DrawerLayout.LOCK_MODE_UNLOCKED;
 import static android.view.MotionEvent.ACTION_CANCEL;
@@ -86,6 +91,8 @@ public class MainCarActivity extends CarActivity
     private String                      m_AppFav3;
     private String                      m_AppFav4;
     private String                      m_AppFav5;
+
+    private Car                         m_Car;
 
     private int                         m_AppsAction;
 
@@ -280,6 +287,24 @@ public class MainCarActivity extends CarActivity
             m_Shell = new Shell.Builder().useSU().open();
         }
 
+        m_Car = Car.createCar(this, new CarConnectionCallback()
+        {
+            @Override
+            public void onConnected(Car car)
+            {
+                Log.d(TAG, "onConnected");
+                RequestAudioFocus();
+            }
+
+            @Override
+            public void onDisconnected(Car car)
+            {
+                Log.d(TAG, "onDisconnected");
+                AbandonAudioFocus();
+            }
+        });
+        m_Car.connect();
+
         InitButtonsActions();
         LoadSharedPreferences();
 
@@ -305,6 +330,9 @@ public class MainCarActivity extends CarActivity
         }
         if (m_Shell != null)
             m_Shell.close();
+
+        if (m_Car.isConnected())
+            m_Car.disconnect();
     }
 
     @Override
@@ -1091,6 +1119,34 @@ public class MainCarActivity extends CarActivity
         Log.d(TAG, "RequestOverlayPermission");
         if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this))
             startActivity(ACTION_MANAGE_OVERLAY_PERMISSION);
+    }
+
+    private void RequestAudioFocus()
+    {
+        Log.d(TAG, "RequestAudioFocus");
+        try
+        {
+            CarAudioManager carAM = m_Car.getCarManager(CarAudioManager.class);
+            carAM.requestAudioFocus(null, carAM.getAudioAttributesForCarUsage(CAR_AUDIO_USAGE_DEFAULT), AUDIOFOCUS_GAIN, 0);
+        }
+        catch (Exception e)
+        {
+            Log.d(TAG, "RequestAudioFocus exception: " + e.toString());
+        }
+    }
+
+    private void AbandonAudioFocus()
+    {
+        Log.d(TAG, "AbandonAudioFocus");
+        try
+        {
+            CarAudioManager carAM = m_Car.getCarManager(CarAudioManager.class);
+            carAM.abandonAudioFocus(null, carAM.getAudioAttributesForCarUsage(CAR_AUDIO_USAGE_DEFAULT));
+        }
+        catch (Exception e)
+        {
+            Log.d(TAG, "AbandonAudioFocus exception: " + e.toString());
+        }
     }
 
     private String getDefaultSharedPreferences(String key, @Nullable String defValue)
