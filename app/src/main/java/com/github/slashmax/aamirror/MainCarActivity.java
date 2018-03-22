@@ -1123,6 +1123,9 @@ public class MainCarActivity extends CarActivity
 
     private void RequestAudioFocus()
     {
+        if (!getDefaultSharedPreferences("request_audio_focus_on_connect", false))
+            return;
+
         Log.d(TAG, "RequestAudioFocus");
         try
         {

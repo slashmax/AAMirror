@@ -93,6 +93,30 @@ public class SettingsActivity extends AppCompatPreferenceActivity
         }
     }
 
+    public static class AudioPreferenceFragment extends PreferenceFragment
+    {
+
+        @Override
+        public void onCreate(@Nullable Bundle savedInstanceState)
+        {
+            super.onCreate(savedInstanceState);
+            addPreferencesFromResource(R.xml.pref_audio_settings);
+            setHasOptionsMenu(true);
+        }
+
+        @Override
+        public boolean onOptionsItemSelected(MenuItem item)
+        {
+            int id = item.getItemId();
+            if (id == android.R.id.home)
+            {
+                startActivity(new Intent(getActivity(), SettingsActivity.class));
+                return true;
+            }
+            return super.onOptionsItemSelected(item);
+        }
+    }
+
     public static class FavouritesPreferenceFragment extends PreferenceFragment
     {
 
