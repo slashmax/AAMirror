@@ -69,6 +69,10 @@ import static android.view.Surface.ROTATION_0;
 import static android.view.Surface.ROTATION_180;
 import static android.view.Surface.ROTATION_270;
 import static android.view.Surface.ROTATION_90;
+import static android.view.View.SYSTEM_UI_FLAG_FULLSCREEN;
+import static android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+import static android.view.View.SYSTEM_UI_FLAG_IMMERSIVE;
+import static android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
 
 public class MainCarActivity extends CarActivity
         implements Handler.Callback,
@@ -237,12 +241,17 @@ public class MainCarActivity extends CarActivity
     public void onCreate(Bundle bundle)
     {
         Log.d(TAG, "onCreate: " + (bundle != null ? bundle.toString() : "null"));
-        setTheme(R.style.AppTheme);
         super.onCreate(bundle);
+        setTheme(R.style.AppTheme);
         setContentView(R.layout.activity_car_main);
 
-        InitCarUiController(getCarUiController());
+        this.c().getDecorView().setSystemUiVisibility(
+                SYSTEM_UI_FLAG_FULLSCREEN |
+                SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                SYSTEM_UI_FLAG_IMMERSIVE | SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
         setIgnoreConfigChanges(0xFFFF);
+
+        InitCarUiController(getCarUiController());
 
         m_AppsAction = ACTION_APP_LAUNCH;
 
@@ -276,7 +285,6 @@ public class MainCarActivity extends CarActivity
             gridFragment.setOnAppLongClickListener(this);
         }
 
-        UpdateConfiguration(getResources().getConfiguration());
         UpdateTouchTransformations(true);
 
         m_ScreenResized = false;
@@ -301,6 +309,7 @@ public class MainCarActivity extends CarActivity
             {
                 Log.d(TAG, "onDisconnected");
                 AbandonAudioFocus();
+                ResetScreenSize();
             }
         });
         m_Car.connect();
@@ -424,7 +433,6 @@ public class MainCarActivity extends CarActivity
     {
         Log.d(TAG, "onConfigurationChanged: " + (configuration != null ? configuration.toString() : "null"));
         super.onConfigurationChanged(configuration);
-        UpdateConfiguration(configuration);
         UpdateTouchTransformations(true);
     }
 
@@ -446,22 +454,6 @@ public class MainCarActivity extends CarActivity
             return getColor(id);
         else
             return getResources().getColor(id);
-    }
-
-    private void UpdateConfiguration(Configuration configuration)
-    {
-        if (configuration == null)
-            return;
-
-        Log.d(TAG, "UpdateConfiguration: " + configuration.toString());
-        int backgroundColor;
-        if ((configuration.uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES)
-            backgroundColor = getColorCompat(R.color.colorCarBackgroundNight);
-        else
-            backgroundColor = getColorCompat(R.color.colorCarBackgroundDay);
-
-        if (m_TaskBarDrawer != null)
-            m_TaskBarDrawer.setBackgroundColor(backgroundColor);
     }
 
     private void OnUnlock()

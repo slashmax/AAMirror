@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Android Auto Mirror</string>
+    <string name="app_name">AA Mirror</string>
 
     <string name="pref_screen_settings">Screen settings</string>
     <string name="pref_navigation_settings">Sidebar settings</string>

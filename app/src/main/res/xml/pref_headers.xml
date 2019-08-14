@@ -3,22 +3,14 @@
 
     <header
         android:fragment="com.github.slashmax.aamirror.SettingsActivity$ScreenPreferenceFragment"
-        android:icon="@drawable/ic_settings_brightness_black"
         android:title="@string/pref_screen_settings" />
 
     <header
         android:fragment="com.github.slashmax.aamirror.SettingsActivity$NavigationPreferenceFragment"
-        android:icon="@drawable/ic_view_array_black"
         android:title="@string/pref_navigation_settings" />
 
     <header
         android:fragment="com.github.slashmax.aamirror.SettingsActivity$AudioPreferenceFragment"
-        android:icon="@drawable/ic_audiotrack_black"
         android:title="@string/pref_audio_settings" />
-
-    <!--<header-->
-        <!--android:fragment="com.github.slashmax.aamirror.SettingsActivity$FavouritesPreferenceFragment"-->
-        <!--android:icon="@drawable/ic_star_black"-->
-        <!--android:title="@string/pref_fav_settings" />-->
 
 </preference-headers>

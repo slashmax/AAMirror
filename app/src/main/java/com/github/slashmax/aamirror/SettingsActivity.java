@@ -1,12 +1,17 @@
 package com.github.slashmax.aamirror;
 
+import android.content.Context;
 import android.content.Intent;
+import android.media.projection.MediaProjectionManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.EditTextPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.support.annotation.Nullable;
 import android.support.v7.app.ActionBar;
 import android.util.Log;
@@ -14,9 +19,14 @@ import android.view.MenuItem;
 
 import java.util.List;
 
+import static android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION;
+import static android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS;
+
 public class SettingsActivity extends AppCompatPreferenceActivity
 {
     private static final String     TAG = "SettingsActivity";
+
+    private static final int            REQUEST_MEDIA_PROJECTION_PERMISSION = 1;
 
     private static Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener = new Preference.OnPreferenceChangeListener()
     {
@@ -150,6 +160,16 @@ public class SettingsActivity extends AppCompatPreferenceActivity
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null)
             actionBar.setDisplayHomeAsUpEnabled(true);
+
+        MediaProjectionManager mediaProjectionManager = (MediaProjectionManager)getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+        if(mediaProjectionManager != null)
+            startActivityForResult(REQUEST_MEDIA_PROJECTION_PERMISSION, mediaProjectionManager.createScreenCaptureIntent());
+
+        if (Build.VERSION.SDK_INT >= 23 && !Settings.System.canWrite(this))
+            startActivity(ACTION_MANAGE_WRITE_SETTINGS);
+
+        if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this))
+            startActivity(ACTION_MANAGE_OVERLAY_PERMISSION);
     }
 
     @Override
@@ -174,5 +194,19 @@ public class SettingsActivity extends AppCompatPreferenceActivity
                 PreferenceManager
                         .getDefaultSharedPreferences(preference.getContext())
                         .getString(preference.getKey(), ""));
+    }
+
+    private void startActivityForResult(int what, Intent intent)
+    {
+        Log.d(TAG, "startActivityForResult");
+        ResultRequestActivity.startActivityForResult(this, null, what, intent, what);
+    }
+
+    private void startActivity(String action)
+    {
+        Intent intent = new Intent(action);
+        intent.setData(Uri.parse("package:" + getPackageName()));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
     }
 }

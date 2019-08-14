@@ -49,7 +49,7 @@ public class ResultRequestActivity extends Activity
     private void startActivityForResult()
     {
         Log.d(TAG, "startActivityForResult");
-        if (ResultHandler != null && RequestIntent != null)
+        if (RequestIntent != null)
             startActivityForResult(RequestIntent, RequestCode);
         else
             finish();
