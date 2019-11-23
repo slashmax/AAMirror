@@ -17,33 +17,27 @@ class MinitouchDaemon
 
     MinitouchDaemon(Context context)
     {
-        Log.d(TAG, "MinitouchDaemon");
         m_Context = context;
     }
 
     void start()
     {
-        Log.d(TAG, "start");
-
         String path = install();
         if (path == null || path.isEmpty())
             return;
 
-        LogShell(Shell.SU.run("chmod 755 " + path));
-        LogShell(Shell.SU.run(path));
+        Shell.SU.run("chmod 755 " + path);
+        Shell.SU.run(path);
     }
 
     void stop(int pid)
     {
-        Log.d(TAG, "stop: " + pid);
         if (pid != 0)
-            LogShell(Shell.SU.run("kill " + pid));
+            Shell.SU.run("kill " + pid);
     }
 
     private String install()
     {
-        Log.d(TAG, "install");
-
         try
         {
             FileOutputStream fileOutputStream = m_Context.openFileOutput("minitouch", 0);
@@ -68,28 +62,15 @@ class MinitouchDaemon
 
     private String getAssetFile()
     {
-        Log.d(TAG, "getAssetFile");
         return ("libs/" + detectAbi() + "/minitouch");
     }
 
     private String detectAbi()
     {
-        Log.d(TAG, "detectAbi");
         List<String> result = Shell.SH.run("getprop ro.product.cpu.abi");
-        LogShell(result);
-
         if (result != null && !result.isEmpty())
             return result.get(0);
 
         return "armeabi";
-    }
-
-    private void LogShell(List<String> list)
-    {
-        if (list != null)
-        {
-            for (int i = 0; i < list.size(); i++)
-                Log.d(TAG, "LogShell: " + list.get(i));
-        }
     }
 }

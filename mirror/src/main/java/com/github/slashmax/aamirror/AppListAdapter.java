@@ -11,7 +11,7 @@ import android.widget.TextView;
 
 import java.util.List;
 
-public class AppListAdapter extends ArrayAdapter<AppEntry>
+class AppListAdapter extends ArrayAdapter<AppEntry>
 {
     private final LayoutInflater m_Inflater;
 

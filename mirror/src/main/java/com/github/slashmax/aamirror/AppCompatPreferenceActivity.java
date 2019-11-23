@@ -4,6 +4,7 @@ import android.content.res.Configuration;
 import android.os.Bundle;
 import android.preference.PreferenceActivity;
 import androidx.annotation.LayoutRes;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatDelegate;
@@ -87,7 +88,7 @@ public abstract class AppCompatPreferenceActivity extends PreferenceActivity
     }
 
     @Override
-    public void onConfigurationChanged(Configuration newConfig)
+    public void onConfigurationChanged(@NonNull Configuration newConfig)
     {
         super.onConfigurationChanged(newConfig);
         getDelegate().onConfigurationChanged(newConfig);
@@ -96,15 +97,15 @@ public abstract class AppCompatPreferenceActivity extends PreferenceActivity
     @Override
     protected void onStop()
     {
-        super.onStop();
         getDelegate().onStop();
+        super.onStop();
     }
 
     @Override
     protected void onDestroy()
     {
-        super.onDestroy();
         getDelegate().onDestroy();
+        super.onDestroy();
     }
 
     public void invalidateOptionsMenu()

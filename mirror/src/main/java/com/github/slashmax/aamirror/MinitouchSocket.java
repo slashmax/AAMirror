@@ -1,5 +1,6 @@
 package com.github.slashmax.aamirror;
 
+import android.annotation.SuppressLint;
 import android.graphics.Point;
 import android.net.LocalSocket;
 import android.net.LocalSocketAddress;
@@ -10,7 +11,7 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 
-public class MinitouchSocket
+class MinitouchSocket
 {
     private static final String TAG = "MinitouchSocket";
     private static final String DEFAULT_SOCKET_NAME = "minitouch";
@@ -35,7 +36,6 @@ public class MinitouchSocket
 
     boolean connect(boolean local)
     {
-        Log.d(TAG, "connect");
         if (local)
             return connectLocal();
         else
@@ -44,7 +44,6 @@ public class MinitouchSocket
 
     void disconnect()
     {
-        Log.d(TAG, "disconnect");
         disconnectLocal();
         disconnectTcp();
     }
@@ -56,8 +55,6 @@ public class MinitouchSocket
 
     private boolean connectLocal()
     {
-        Log.d(TAG, "connectLocal");
-
         disconnectLocal();
         LocalSocket socket = new LocalSocket();
         try
@@ -83,7 +80,6 @@ public class MinitouchSocket
 
     private void disconnectLocal()
     {
-        Log.d(TAG, "disconnectLocal");
         if (isConnectedLocal())
         {
             try
@@ -106,8 +102,6 @@ public class MinitouchSocket
 
     private boolean connectTcp()
     {
-        Log.d(TAG, "connectTcp");
-
         disconnectTcp();
         try
         {
@@ -133,7 +127,6 @@ public class MinitouchSocket
 
     private void disconnectTcp()
     {
-        Log.d(TAG, "disconnectTcp");
         if (isConnectedTcp())
         {
             try
@@ -156,13 +149,11 @@ public class MinitouchSocket
 
     int getPid()
     {
-        Log.d(TAG, "getPid: " + Pid);
         return Pid;
     }
 
     private boolean inputReadParams(InputStream stream)
     {
-        Log.d(TAG, "inputReadParams");
         byte[] data_buffer = new byte[128];
 
         Pid = 0;
@@ -209,7 +200,6 @@ public class MinitouchSocket
             Pid = Integer.parseInt(pid_line[1]);
         }
 
-        Log.d(TAG, "inputReadParams: pid " + Pid);
         return true;
     }
 
@@ -254,6 +244,7 @@ public class MinitouchSocket
         m_TouchYScale = MaxY / displayHeight;
     }
 
+    @SuppressLint("DefaultLocale")
     boolean TouchDown(int id, double x, double y, double pressure)
     {
         x = (m_ProjectionOffsetX + x * m_ProjectionWidth) * m_TouchXScale;
@@ -266,6 +257,7 @@ public class MinitouchSocket
         return OutputWrite(String.format("d %d %d %d %d\n", id, (int)x, (int)y, (int)pressure));
     }
 
+    @SuppressLint("DefaultLocale")
     boolean TouchMove(int id, double x, double y, double pressure)
     {
         x = (m_ProjectionOffsetX + x * m_ProjectionWidth) * m_TouchXScale;
@@ -278,6 +270,7 @@ public class MinitouchSocket
         return OutputWrite(String.format("m %d %d %d %d\n", id, (int)x, (int)y, (int)pressure));
     }
 
+    @SuppressLint("DefaultLocale")
     boolean TouchUp(int id)
     {
         return OutputWrite(String.format("u %d\n", id));

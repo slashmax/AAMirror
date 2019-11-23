@@ -2,7 +2,6 @@ package com.github.slashmax.aamirror;
 
 import android.content.Context;
 import android.util.ArrayMap;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ViewConfiguration;
 
@@ -15,7 +14,7 @@ import static android.view.MotionEvent.ACTION_UP;
 
 class TwoFingerGestureDetector
 {
-    private static final String TAG = "2FingerGestureDetector";
+    private static final String TAG = "TwoFingerGestureDetector";
 
     public interface OnTwoFingerGestureListener {
         void onTwoFingerTapUp();
@@ -27,7 +26,6 @@ class TwoFingerGestureDetector
 
     TwoFingerGestureDetector(Context context, OnTwoFingerGestureListener listener)
     {
-        Log.d(TAG, "TwoFingerGestureDetector");
         m_Listener = listener;
         m_EventMap = new ArrayMap<>();
         final ViewConfiguration configuration = ViewConfiguration.get(context);
@@ -58,9 +56,12 @@ class TwoFingerGestureDetector
                         MotionEvent.PointerCoords coords = new MotionEvent.PointerCoords();
                         event.getPointerCoords(i, coords);
                         MotionEvent.PointerCoords start = m_EventMap.get(id);
-                        double dist = ComputeSquaredDistance(start, coords);
-                        if (dist > m_TouchSlopSquare)
-                            m_EventMap.remove(id);
+                        if (start != null)
+                        {
+                            double dist = ComputeSquaredDistance(start, coords);
+                            if (dist > m_TouchSlopSquare)
+                                m_EventMap.remove(id);
+                        }
                     }
                     break;
                 case ACTION_UP:

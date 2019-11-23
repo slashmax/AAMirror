@@ -11,7 +11,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-public class AppListLoader extends AsyncTaskLoader<List<AppEntry>>
+class AppListLoader extends AsyncTaskLoader<List<AppEntry>>
 {
     private static final Comparator<AppEntry> ALPHA_COMPARATOR = new Comparator<AppEntry>()
     {
@@ -36,8 +36,6 @@ public class AppListLoader extends AsyncTaskLoader<List<AppEntry>>
     public List<AppEntry> loadInBackground()
     {
         List<ApplicationInfo> apps = m_PackageManager.getInstalledApplications(0);
-        if (apps == null)
-            apps = new ArrayList<>();
 
         final Context context = getContext();
         List<AppEntry> entries = new ArrayList<>(apps.size());
@@ -58,17 +56,9 @@ public class AppListLoader extends AsyncTaskLoader<List<AppEntry>>
     @Override
     public void deliverResult(List<AppEntry> apps)
     {
-        if (isReset() && apps != null)
-            onReleaseResources(apps);
-
-        List<AppEntry> oldApps = m_Apps;
         m_Apps = apps;
-
         if (isStarted())
             super.deliverResult(apps);
-
-        if (oldApps != null)
-            onReleaseResources(oldApps);
     }
 
     @Override
@@ -91,7 +81,6 @@ public class AppListLoader extends AsyncTaskLoader<List<AppEntry>>
     public void onCanceled(List<AppEntry> apps)
     {
         super.onCanceled(apps);
-        onReleaseResources(apps);
     }
 
     @Override
@@ -100,14 +89,6 @@ public class AppListLoader extends AsyncTaskLoader<List<AppEntry>>
         super.onReset();
         onStopLoading();
         if (m_Apps != null)
-        {
-            onReleaseResources(m_Apps);
             m_Apps = null;
-        }
-    }
-
-    private void onReleaseResources(List<AppEntry> apps)
-    {
-
     }
 }

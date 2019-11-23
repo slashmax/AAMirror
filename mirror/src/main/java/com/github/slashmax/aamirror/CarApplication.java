@@ -2,7 +2,6 @@ package com.github.slashmax.aamirror;
 
 import android.content.res.Configuration;
 import android.graphics.Point;
-import android.util.Log;
 import android.view.OrientationEventListener;
 import android.view.WindowManager;
 
@@ -25,7 +24,6 @@ public class CarApplication extends Application
     @Override
     public void onCreate()
     {
-        Log.d(TAG, "onCreate");
         super.onCreate();
 
         m_WindowManager = (WindowManager)getApplicationContext().getSystemService(WINDOW_SERVICE);
@@ -44,21 +42,18 @@ public class CarApplication extends Application
     @Override
     public void onConfigurationChanged(Configuration newConfig)
     {
-        Log.d(TAG, "onConfigurationChanged: " + (newConfig != null ? newConfig.toString() : "null"));
         super.onConfigurationChanged(newConfig);
         UpdateScreenSizeAndRotation();
     }
 
     public static void EnableOrientationListener()
     {
-        Log.d(TAG, "EnableOrientationListener");
         if (m_OrientationListener != null)
             m_OrientationListener.enable();
     }
 
     public static void DisableOrientationListener()
     {
-        Log.d(TAG, "DisableOrientationListener");
         if (m_OrientationListener != null)
             m_OrientationListener.disable();
     }
@@ -84,6 +79,5 @@ public class CarApplication extends Application
             DisplaySize.x = ScreenSize.y;
             DisplaySize.y = ScreenSize.x;
         }
-        Log.d(TAG, "UpdateDisplaySize: " + DisplaySize);
     }
 }

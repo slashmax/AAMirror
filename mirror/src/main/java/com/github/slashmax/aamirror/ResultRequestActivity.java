@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
 
 public class ResultRequestActivity extends Activity
 {
@@ -20,23 +19,14 @@ public class ResultRequestActivity extends Activity
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
-        Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_result_request);
         startActivityForResult();
     }
 
     @Override
-    protected void onDestroy()
-    {
-        Log.d(TAG, "onDestroy");
-        super.onDestroy();
-    }
-
-    @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data)
     {
-        Log.d(TAG, "onActivityResult");
         super.onActivityResult(requestCode, resultCode, data);
         if (ResultHandler != null)
         {
@@ -48,7 +38,6 @@ public class ResultRequestActivity extends Activity
 
     private void startActivityForResult()
     {
-        Log.d(TAG, "startActivityForResult");
         if (RequestIntent != null)
             startActivityForResult(RequestIntent, RequestCode);
         else
@@ -57,8 +46,6 @@ public class ResultRequestActivity extends Activity
 
     public static void startActivityForResult(Context context, Handler handler, int what, Intent intent, int requestCod)
     {
-        Log.d(TAG, "startActivityForResult");
-
         ResultHandler   = handler;
         RequestWhat     = what;
         RequestIntent   = intent;

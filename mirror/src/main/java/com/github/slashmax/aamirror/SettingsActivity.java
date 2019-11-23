@@ -1,11 +1,11 @@
 package com.github.slashmax.aamirror;
 
-import android.content.Context;
+import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.preference.EditTextPreference;
 import android.preference.ListPreference;
 import android.preference.Preference;
@@ -14,19 +14,17 @@ import android.preference.PreferenceManager;
 import android.provider.Settings;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
-import android.util.Log;
 import android.view.MenuItem;
 
 import java.util.List;
 
 import static android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION;
 import static android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS;
+import static android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS;
 
 public class SettingsActivity extends AppCompatPreferenceActivity
 {
     private static final String     TAG = "SettingsActivity";
-
-    private static final int            REQUEST_MEDIA_PROJECTION_PERMISSION = 1;
 
     private static Preference.OnPreferenceChangeListener sBindPreferenceSummaryToValueListener = new Preference.OnPreferenceChangeListener()
     {
@@ -154,28 +152,38 @@ public class SettingsActivity extends AppCompatPreferenceActivity
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState)
     {
-        Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
 
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null)
             actionBar.setDisplayHomeAsUpEnabled(true);
 
-        MediaProjectionManager mediaProjectionManager = (MediaProjectionManager)getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-        if(mediaProjectionManager != null)
-            startActivityForResult(REQUEST_MEDIA_PROJECTION_PERMISSION, mediaProjectionManager.createScreenCaptureIntent());
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.System.canWrite(this))
             startActivity(ACTION_MANAGE_WRITE_SETTINGS);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this))
             startActivity(ACTION_MANAGE_OVERLAY_PERMISSION);
+
+        requestIgnoreBatteryOptimizations();
+    }
+
+    private void requestIgnoreBatteryOptimizations()
+    {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+        {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName()))
+            {
+                @SuppressLint("BatteryLife") Intent intent = new Intent(ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                intent.setData(Uri.parse("package:" + getPackageName()));
+                startActivityForResult(intent, 1001);
+            }
+        }
     }
 
     @Override
     public void onBuildHeaders(List<Header> target)
     {
-        Log.d(TAG, "onBuildHeaders");
         super.onBuildHeaders(target);
         loadHeadersFromResource(R.xml.pref_headers, target);
     }
@@ -194,12 +202,6 @@ public class SettingsActivity extends AppCompatPreferenceActivity
                 PreferenceManager
                         .getDefaultSharedPreferences(preference.getContext())
                         .getString(preference.getKey(), ""));
-    }
-
-    private void startActivityForResult(int what, Intent intent)
-    {
-        Log.d(TAG, "startActivityForResult");
-        ResultRequestActivity.startActivityForResult(this, null, what, intent, what);
     }
 
     private void startActivity(String action)

@@ -6,7 +6,7 @@ import android.graphics.drawable.Drawable;
 
 import java.io.File;
 
-public class AppEntry
+class AppEntry
 {
     private final AppListLoader     m_Loader;
     private final ApplicationInfo   m_Info;
@@ -82,7 +82,7 @@ public class AppEntry
             {
                 m_Mounted = true;
                 CharSequence label = m_Info.loadLabel(context.getPackageManager());
-                m_Label = label != null ? label.toString() : m_Info.packageName;
+                m_Label = label.toString();
             }
         }
     }

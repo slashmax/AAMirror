@@ -49,7 +49,6 @@ public class OrientationService extends Service
     @Override
     public void onCreate()
     {
-        Log.d(TAG, "onCreate");
         super.onCreate();
         ReadRotationSettings();
     }
@@ -57,7 +56,6 @@ public class OrientationService extends Service
     @Override
     public int onStartCommand(Intent intent, int flags, int startId)
     {
-        Log.d(TAG, "onStartCommand");
         if (intent != null)
         {
             int method = intent.getIntExtra(METHOD, METHOD_NONE);
@@ -83,7 +81,6 @@ public class OrientationService extends Service
     @Override
     public void onDestroy()
     {
-        Log.d(TAG, "onDestroy");
         Reset();
         super.onDestroy();
     }
@@ -92,40 +89,34 @@ public class OrientationService extends Service
     @Override
     public IBinder onBind(Intent intent)
     {
-        Log.d(TAG, "onBind");
         return null;
     }
 
     @Override
     public boolean onUnbind(Intent intent)
     {
-        Log.d(TAG, "onUnbind");
         return super.onUnbind(intent);
     }
 
     @Override
     public void onRebind(Intent intent)
     {
-        Log.d(TAG, "onRebind");
         super.onRebind(intent);
     }
 
     private WindowManager getWindowManager()
     {
-        Log.d(TAG, "getWindowManager");
         return (WindowManager)getSystemService(WINDOW_SERVICE);
     }
 
     private void Reset()
     {
-        Log.d(TAG, "Reset");
         WriteRotationSettings(m_AutoRotation, m_UserRotation);
         RemoveOverlay();
     }
 
     private int RotationToOrientation(int rotation)
     {
-        Log.d(TAG, "RotationToOrientation");
         switch (rotation)
         {
             case ROTATION_0:    return SCREEN_ORIENTATION_PORTRAIT;
@@ -138,14 +129,12 @@ public class OrientationService extends Service
 
     private boolean CanWriteSettings()
     {
-        Log.d(TAG, "CanWriteSettings");
         return Build.VERSION.SDK_INT < 23 ||
                 Settings.System.canWrite(this);
     }
 
     private void ReadRotationSettings()
     {
-        Log.d(TAG, "ReadRotationSettings");
         try
         {
             m_AutoRotation = Settings.System.getInt(getContentResolver(), ACCELEROMETER_ROTATION);
@@ -159,8 +148,6 @@ public class OrientationService extends Service
 
     private void WriteRotationSettings(int autoRotation, int userRotation)
     {
-        Log.d(TAG, "WriteRotationSettings");
-
         if (CanWriteSettings())
         {
             Settings.System.putInt(getContentResolver(), ACCELEROMETER_ROTATION, autoRotation);
@@ -170,14 +157,12 @@ public class OrientationService extends Service
 
     private boolean CanCreateOverlay()
     {
-        Log.d(TAG, "CanCreateOverlay");
         return Build.VERSION.SDK_INT < 23 ||
                 Settings.canDrawOverlays(this);
     }
 
     private boolean CreateOverlay(int orientation)
     {
-        Log.d(TAG, "CreateOverlay");
         WindowManager wm = getWindowManager();
         if (wm == null || !CanCreateOverlay())
             return false;
@@ -196,7 +181,6 @@ public class OrientationService extends Service
 
     private void RemoveOverlay()
     {
-        Log.d(TAG, "RemoveOverlay");
         WindowManager wm = getWindowManager();
         if (wm != null && m_OverlayLayout != null)
         {
