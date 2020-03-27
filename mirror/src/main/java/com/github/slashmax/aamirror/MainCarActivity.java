@@ -84,7 +84,7 @@ public class MainCarActivity extends CarActivity
 
     private static final int            ACTION_APP_LAUNCH   = 0;
     private static final int            ACTION_APP_FAV_1    = 1;
-    private static final int            ACTION_APP_FAV_2    = 2;    
+    private static final int            ACTION_APP_FAV_2    = 2;
     private static final int            ACTION_APP_FAV_3    = 3;
     private static final int            ACTION_APP_FAV_4    = 4;
     private static final int            ACTION_APP_FAV_5    = 5;
@@ -758,7 +758,7 @@ public class MainCarActivity extends CarActivity
                 m_AppFav5 = packageName;
                 ImageView favImage5 = (ImageView)findViewById(R.id.m_Fav5);
                 if (favImage5 != null) favImage5.setImageDrawable(icon);
-                break;        
+                break;
         }
     }
 
