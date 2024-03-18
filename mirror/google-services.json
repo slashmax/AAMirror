@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "695034296181",
+    "project_id": "aamirror-257c4",
+    "storage_bucket": "aamirror-257c4.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:695034296181:android:0d0d3694e1a5fa27b7053c",
+        "android_client_info": {
+          "package_name": "com.github.slashmax.aamirror"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAaze8OQ5DYLPoA_VzfN_hIspGt9B0RE2k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
